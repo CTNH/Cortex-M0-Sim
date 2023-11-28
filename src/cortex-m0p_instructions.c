@@ -1,4 +1,5 @@
 #include "cortex-m0p_instructions.h"
+#include "basiclib_string.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -109,9 +110,23 @@ int hashUniqueCheck() {
 
 
 int execInstruction(char* inst) {
-	int instHash = instructionHash(inst);
+	
+	char** instArgs = strSplit(inst, " ");
+	// char** instArgs = strtokSplit(inst, " ");	// TODO: replace above
+	int iLen=0;		// Length of arguments
+	while (instArgs[iLen][0] != -1) {
+		iLen++;
+	}
+	if (iLen == 0) {
+		return -1;
+	}
+
+
+	int instHash = instructionHash(instArgs[0]);
 	switch (instHash) {
 		case 0xf31:		// ADCS
+			if (iLen != 4)
+				return -1;
 			break;
 		case 0xbd8:     // ADD
 			break;
