@@ -1,7 +1,15 @@
-#include "cortex-m0p_instructions.h"
+#include "cortex-m0p.h"
+#include "cortex-m0p_registers.h"
 #include "basiclib_string.h"
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+
+// Define Registers
+ProcessorCore_Register pcReg;
+SystemControl_Register scReg;
+NVIC_Register nvicReg;
+MPU_Register mpuReg;
 
 int instructionHash(char* inst) {
 	int hash = 0;
@@ -108,6 +116,42 @@ int hashUniqueCheck() {
 	return 1;
 }
 
+// Returns the number of the processor core register given its name
+int pcRegNum(char* name) {
+	if (strcmp(name, "R0") == 0)
+		return 0;
+	if (strcmp(name, "R1") == 0)
+		return 1;
+	if (strcmp(name, "R2") == 0)
+		return 2;
+	if (strcmp(name, "R3") == 0)
+		return 3;
+	if (strcmp(name, "R4") == 0)
+		return 4;
+	if (strcmp(name, "R5") == 0)
+		return 5;
+	if (strcmp(name, "R6") == 0)
+		return 6;
+	if (strcmp(name, "R7") == 0)
+		return 7;
+	if (strcmp(name, "R8") == 0)
+		return 8;
+	if (strcmp(name, "R9") == 0)
+		return 9;
+	if (strcmp(name, "R10") == 0)
+		return 10;
+	if (strcmp(name, "R11") == 0)
+		return 11;
+	if (strcmp(name, "R12") == 0)
+		return 12;
+	if (strcmp(name, "R13") == 0 | strcmp(name, "MSP") == 0 | strcmp(name, "PSP") == 0)
+		return 13;
+	if (strcmp(name, "LR") == 0)
+		return 14;
+	if (strcmp(name, "PC") == 0)
+		return 15;
+	return -1;
+}
 
 int execInstruction(char* inst) {
 	
@@ -127,6 +171,50 @@ int execInstruction(char* inst) {
 		case 0xf31:		// ADCS
 			if (iLen != 4)
 				return -1;
+
+			uint32_t* regs[3];	// Rd, Rn, Rm
+			for (int i=0; i<3; i++) {
+				switch(pcRegNum(instArgs[i+1])) {
+					case 0:
+						regs[i] = &pcReg.R0;
+						break;
+					case 1:
+						regs[i] = &pcReg.R1;
+						break;
+					case 2:
+						regs[i] = &pcReg.R2;
+						break;
+					case 3:
+						regs[i] = &pcReg.R3;
+						break;
+					case 4:
+						regs[i] = &pcReg.R4;
+						break;
+					case 5:
+						regs[i] = &pcReg.R5;
+						break;
+					case 6:
+						regs[i] = &pcReg.R6;
+						break;
+					case 7:
+						regs[i] = &pcReg.R7;
+						break;
+					default:
+						return -2;
+				}
+			}
+			// Rd = Rn + Rm + C (Conditional Carry flag in APSR)
+			*regs[0] = *regs[1] + *regs[2] + ((pcReg.PSR.APSR >> 29) & 1);
+			if (pcReg.PSR.APSR) {				// If carry flag set
+				pcReg.PSR.APSR &= ~(1 << 29);	// Reset carry flag
+			}
+
+			// Cast as long to obtain actual value
+			long rd = ((long) *regs[1]) + ((long) *regs[2]);
+			if (rd >= (1L << 32)) {				// If rd is bigger
+				pcReg.PSR.APSR |= (1 << 29);	// Set the carry flag
+			}
+
 			break;
 		case 0xbd8:     // ADD
 			break;

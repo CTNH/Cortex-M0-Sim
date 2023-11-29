@@ -1,5 +1,5 @@
-#ifndef CORTEXM0P_INSTRUCTIONS_H
-#define CORTEXM0P_INSTRUCTIONS_H
+#ifndef CORTEXM0P_H
+#define CORTEXM0P_H
 
 /*
  *	The following instructions list is from the ARM developer
