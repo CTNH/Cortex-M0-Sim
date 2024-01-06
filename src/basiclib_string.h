@@ -10,6 +10,7 @@ extern char* strJoin(char** arr, char* str);
 extern char* substr(char* str, int start, int length);
 extern int* strFind(char* str, char* substr);
 extern int* strOverlapFind(char* str, char* substr);
-extern char* strReplace(char* str, char* old, char* new, int count);
+extern char* strReplace(char* str, char* old, char* replacement, int count);
+extern int strtoint(char* str);
 
 #endif

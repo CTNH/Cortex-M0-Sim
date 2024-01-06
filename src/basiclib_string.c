@@ -176,7 +176,7 @@ int* strOverlapFind(char* str, char* substr) {
     return out;
 }
 
-char* strReplace(char* str, char* old, char* new, int count) {
+char* strReplace(char* str, char* old, char* replacement, int count) {
     int* pos = strFind(str, old);
     // All occurences
     if (count == -1) {
@@ -186,7 +186,7 @@ char* strReplace(char* str, char* old, char* new, int count) {
         count = pos[0];
     }
     
-    char* out = malloc((strlen(str) + count*(strlen(new) - strlen(old))) * sizeof(char));
+    char* out = malloc((strlen(str) + count*(strlen(replacement) - strlen(old))) * sizeof(char));
 
     int idx = 0;
     int outIdx = 0;
@@ -195,8 +195,8 @@ char* strReplace(char* str, char* old, char* new, int count) {
             out[outIdx] = str[j];
             outIdx++;
         }
-        for (int j=0; j<strlen(new); j++) {
-            out[outIdx] = new[j];
+        for (int j=0; j<strlen(replacement); j++) {
+            out[outIdx] = replacement[j];
             outIdx++;
         }
         idx = pos[i+1] + strlen(old);
@@ -208,3 +208,18 @@ char* strReplace(char* str, char* old, char* new, int count) {
     
     return out;
 }
+
+int strtoint(char* str) {
+	int out = 0;
+
+	for (int i=0; i<strlen(str); i++) {
+		if (str[i] >= '0' && str[i] <= '9')
+			// Move original by a tenth unit and add new digit
+			out = out*10 + (str[i]-'0');
+		else
+			// If character is not a number
+			break;
+	}
+	return out;
+}
+
