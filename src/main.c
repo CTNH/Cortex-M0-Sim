@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include "basiclib_string.h"
-#include "cortex-m0p_instructions.h"
+#include "cortex-m0p.h"
 
 int main() {
 	printf("Hello world\n");

@@ -1,3 +1,4 @@
+#include <stdint.h>
 #ifndef CORTEXM0P_H
 #define CORTEXM0P_H
 
@@ -67,6 +68,8 @@ void WFI();		// Wait For Interrupt
 int instructionHash(char* inst);
 // Checks if the instruction hash will produce unique hashes
 int hashUniqueCheck();
+// Gets address of register given its string name
+uint32_t* getRegPtr(char* reg);
 // Executes the instruction passed through
 int execInstruction(char* inst);
 
