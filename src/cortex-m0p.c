@@ -507,39 +507,7 @@ int execInstruction(char* inst) {
 		// N & Z flags are updated, C is updated to last bit shifted out, V is unaffected
 		case 0x369:     // ASRS		{Rd,} Rm, <Rs|#imm>
 			{
-				/*
 				// Arithmetic Shift Right
-				uint32_t *rd = getRegPtr(instArgs[1]);
-				uint32_t *rm = getRegPtr(instArgs[iLen-2]);
-
-				uint32_t *rs = getRegPtr(instArgs[iLen-1]);
-				// Most significant bit
-				int msb = (*rm >> 31) & 1;
-				// Register holding shift length or immediate value
-				if (*rs != NULL) {	// Register
-					if ((*rd >> (*rs-1))
-						updateFlag('C', 1);
-					else
-						updateFlag('C', 0);
-					*rd = *rm >> *rs;
-					if (msb)	// If most significant bit is 1
-						*rd |= (uint32_t)(pow(2, (*rs)) - 1) << (32-*rs);
-				}
-				else {	// Immediate value
-					int imm = strtoint(instArgs[iLen-1]+1);
-					*rd = *rm >> imm;
-					if (msb)	// If most significant bit is 1
-						*rd |= (uint32_t)(pow(2, (imm)) - 1) << (32-imm);
-				}
-
-				// Update condition flags
-				updateFlag('N', (int32_t)*rd<0);
-				updateFlag('Z', *rd==0);
-				// TODO: Update carry flag
-
-				*/
-
-
 				uint32_t *rd = getRegPtr(instArgs[1]);
 				uint32_t *rm = getRegPtr(instArgs[iLen-2]);
 				// Rs / Immediate
@@ -583,34 +551,6 @@ int execInstruction(char* inst) {
 			break;
 		case 0x969:     // LSRS
 			{
-				/*
-				// Logical Shift Right
-				uint32_t *rd = getRegPtr(instArgs[1]);
-				uint32_t *rm;
-				uint32_t *rs;
-				if (iLen == 3) {	// Rd is omitted
-					rm = getRegPtr(instArgs[1]);
-					rs = getRegPtr(instArgs[2]);
-				}
-				else {
-					rm = getRegPtr(instArgs[2]);
-					rs = getRegPtr(instArgs[3]);
-				}
-				if (*rs == NULL) {		// Immediate Value
-					instArgs[iLen-1] = instArgs[iLen-1]+1;	// Remove '#'
-					uint32_t imm = strtoint(instArgs[iLen-1]);
-
-					*rd = *rm >> imm;
-				}
-				else {
-					*rd = *rm >> *rs;
-				}
-
-				updateFlag('N', (int32_t)*rd<0);
-				updateFlag('Z', *rd==0);
-				// TODO: Uodate C flag to last bit shifted out except when shift length is 0
-				*/
-
 				// Logical Shift Right
 				uint32_t *rd = getRegPtr(instArgs[1]);
 				uint32_t *rm = getRegPtr(instArgs[iLen-2]);
@@ -629,7 +569,32 @@ int execInstruction(char* inst) {
 				updateFlag('Z', *rd==0);
 			}
 			break;
+		case 0x469:     // RORS
+			{
+				// Right Rotation
+				uint32_t *rd = getRegPtr(instArgs[1]);
+				uint32_t *rm = getRegPtr(instArgs[iLen-2]);
+				// Rs / Immediate
+				uint32_t shiftLength = *getRegPtr(instArgs[iLen-1]);
+				if (shiftLength == NULL) {
+					shiftLength = strtoint(instArgs[iLen-1]+1);
+				}
 
+				if (shiftLength % 32 == 0)
+					shiftLength = 32;
+				else if (shiftLength > 32) {
+					shiftLength %= 32;
+				}
+
+				updateFlag('C', getBit(*rm, shiftLength-1));	// Last Shifted Out Bit
+
+				*rd = (*rm >> shiftLength) | (*rm << (32-shiftLength));
+
+				// Update condition flags
+				updateFlag('N', (int32_t)*rd<0);
+				updateFlag('Z', *rd==0);
+			}
+			break;
 
 
 
@@ -758,8 +723,6 @@ int execInstruction(char* inst) {
 		case 0xe76:     // REV16
 			break;
 		case 0x0b8:     // REVSH
-			break;
-		case 0x469:     // RORS
 			break;
 		case 0x072:     // SEV
 			break;
