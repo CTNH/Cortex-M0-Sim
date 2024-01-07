@@ -2,7 +2,13 @@
 #include <stdint.h>
 
 typedef struct {
+	// dgug Page 3-9
 	uint32_t APSR;		// Application Program Status Register
+						// Bit 31:	N (Negative Flag)
+						// Bit 30:	Z (Zero Flag)
+						// Bit 29:	C (Carry/Borrow Flag)
+						// Bit 28:	V (Overflow Flag)
+						// Bit 0-27: Reserved
 	uint32_t IPSR;		// Interrupt Program Status Register
 	uint32_t EPSR;		// Execution Program Status Register
 } ProgramStatus_Register;

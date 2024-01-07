@@ -209,12 +209,30 @@ uint32_t* getRegPtr(char* reg) {
 	return NULL;
 }
 
+void updateFlag(char flag, int value) {
+	switch(flag) {
+		case 'N':
+			break;
+		case 'Z':
+			break;
+		case 'C':
+			break;
+		case 'V':
+			break;
+	}
+}
+
 int execInstruction(char* inst) {
 	
 	char** instArgs = strSplit(inst, " ");
 	// char** instArgs = strtokSplit(inst, " ");	// TODO: replace above
 	int iLen=0;		// Length of arguments
 	while (instArgs[iLen][0] != -1) {
+		// Remove ',' from last character
+		if (instArgs[iLen][strlen(instArgs[iLen])-1] == ',') {
+			instArgs[iLen][strlen(instArgs[iLen])-1] = '\0';
+		}
+		printf("%s\n", instArgs[iLen]);
 		iLen++;
 	}
 	if (iLen == 0) {
@@ -230,47 +248,65 @@ int execInstruction(char* inst) {
 					return -1;
 
 				uint32_t* regs[3];	// Rd, Rn, Rm
-				for (int i=0; i<3; i++) {
-					switch(pcRegNum(instArgs[i+1])) {
-						case 0:
-							regs[i] = &pcReg.R0;
-							break;
-						case 1:
-							regs[i] = &pcReg.R1;
-							break;
-						case 2:
-							regs[i] = &pcReg.R2;
-							break;
-						case 3:
-							regs[i] = &pcReg.R3;
-							break;
-						case 4:
-							regs[i] = &pcReg.R4;
-							break;
-						case 5:
-							regs[i] = &pcReg.R5;
-							break;
-						case 6:
-							regs[i] = &pcReg.R6;
-							break;
-						case 7:
-							regs[i] = &pcReg.R7;
-							break;
-						default:
-							return -2;
-					}
-				}
+				uint32_t *rd = getRegPtr(instArgs[1]);
+				uint32_t *rn = getRegPtr(instArgs[2]);
+				uint32_t *rm = getRegPtr(instArgs[3]);
+
 				// Rd = Rn + Rm + C (Conditional Carry flag in APSR)
-				*regs[0] = *regs[1] + *regs[2] + ((pcReg.PSR.APSR >> 29) & 1);
+				*rd = *rn + *rm + ((pcReg.PSR.APSR >> 29) & 1);
 				if (pcReg.PSR.APSR) {				// If carry flag set
 					pcReg.PSR.APSR &= ~(1 << 29);	// Reset carry flag
 				}
 
 				// Cast as long to obtain actual value
-				long rd = ((long) *regs[1]) + ((long) *regs[2]);
-				if (rd >= (1L << 32)) {				// If rd is bigger
+				long lrd = ((long) *rn) + ((long) *rm);
+				if (lrd >= (1L << 32)) {				// If rd is bigger
 					pcReg.PSR.APSR |= (1 << 29);	// Set the carry flag
 				}
+
+				// for (int i=0; i<3; i++) {
+				// 	switch(pcRegNum(instArgs[i+1])) {
+				// 		case 0:
+				// 			regs[i] = &pcReg.R0;
+				// 			break;
+				// 		case 1:
+				// 			regs[i] = &pcReg.R1;
+				// 			break;
+				// 		case 2:
+				// 			regs[i] = &pcReg.R2;
+				// 			break;
+				// 		case 3:
+				// 			regs[i] = &pcReg.R3;
+				// 			break;
+				// 		case 4:
+				// 			regs[i] = &pcReg.R4;
+				// 			break;
+				// 		case 5:
+				// 			regs[i] = &pcReg.R5;
+				// 			break;
+				// 		case 6:
+				// 			regs[i] = &pcReg.R6;
+				// 			break;
+				// 		case 7:
+				// 			regs[i] = &pcReg.R7;
+				// 			break;
+				// 		default:
+				// 			return -2;
+				// 	}
+				// }
+				// // Rd = Rn + Rm + C (Conditional Carry flag in APSR)
+				// *regs[0] = *regs[1] + *regs[2] + ((pcReg.PSR.APSR >> 29) & 1);
+				// if (pcReg.PSR.APSR) {				// If carry flag set
+				// 	pcReg.PSR.APSR &= ~(1 << 29);	// Reset carry flag
+				// }
+
+				// // Cast as long to obtain actual value
+				// long rd = ((long) *regs[1]) + ((long) *regs[2]);
+				// if (rd >= (1L << 32)) {				// If rd is bigger
+				// 	pcReg.PSR.APSR |= (1 << 29);	// Set the carry flag
+				// }
+
+				// TODO: update N,Z,C,V flags
 			}
 			break;
 		case 0xbd8:     // ADD
@@ -279,11 +315,15 @@ int execInstruction(char* inst) {
 				uint32_t *rm = getRegPtr(instArgs[2]);
 				uint32_t *rn = getRegPtr(instArgs[3]);
 
+				// TODO: Rd can be omitted
+
 				// If all are registers instead of immediate values
 				if (*rn != NULL)
 					*rd = *rm + *rn;
-				else
+				else {
+					instArgs[3] = instArgs[3]+1;		// Remove '#'
 					*rd = *rm + strtoint(instArgs[3]);
+				}
 			}
 			break;
 		case 0xf39:     // ADDS
@@ -294,6 +334,8 @@ int execInstruction(char* inst) {
 			{
 				uint32_t *rd = getRegPtr(instArgs[1]);
 				char* label = instArgs[2];
+
+				// TODO
 			}
 			break;
 		case 0x1b9:     // ANDS
@@ -304,6 +346,8 @@ int execInstruction(char* inst) {
 				uint32_t *rn = getRegPtr(instArgs[3]);
 
 				*rd = *rm & *rn;
+
+				// TODO: update N,Z flags
 			}
 			break;
 		case 0x369:     // ASRS
@@ -333,6 +377,8 @@ int execInstruction(char* inst) {
 					if (msb)	// If most significant bit is 1
 						*rd |= (uint32_t)(pow(2, (imm)) - 1) << (32-imm);
 				}
+
+				// TODO: update N,Z,C flags
 			}
 			break;
 		case 0x062:     // B
@@ -345,33 +391,91 @@ int execInstruction(char* inst) {
 				uint32_t *rm = getRegPtr(instArgs[3]);
 
 				*rd = *rn & (~*rm);
+
+				// TODO: update N,Z flags
 			}
 			break;
 		case 0x35a:     // BKPT
+			{
+				// Breakpoint
+			}
 			break;
 		case 0x37e:     // BL
+			{
+				// Branch with link call to function
+			}
 			break;
 		case 0xc6c:     // BLX
 			break;
 		case 0x38a:     // BX
 			break;
 		case 0xcaa:     // CMN
+			{
+				// Compare Negative
+				uint32_t *rn = getRegPtr(instArgs[1]);
+				uint32_t *rm = getRegPtr(instArgs[2]);
+
+				// TODO
+			}
 			break;
 		case 0xcac:     // CMP
+			{
+				// Compare
+				uint32_t *rn = getRegPtr(instArgs[1]);
+				uint32_t *rm = getRegPtr(instArgs[2]);
+
+				// TODO
+				// Immediate value
+				if (*rm == NULL) {
+				}
+				else {}
+			}
 			break;
 		case 0x5a4:     // CPSID
+			{
+				// TODO check if current execution mode is privileged
+				// Change Processor State Interrupt Disable
+				pcReg.PRIMASK |= 1;
+			}
 			break;
 		case 0x5a5:     // CPSIE
+			{
+				// TODO check if current execution mode is privileged
+				// Change Processor State Interrupt Enable
+				pcReg.PRIMASK &= ~1;
+			}
 			break;
 		case 0xcde:     // DMB
+			{
+				// Data Memory Barrier
+			}
 			break;
 		case 0xd0e:     // DSB
+			{
+				// Data Synchronization Barrier
+			}
 			break;
 		case 0xa69:     // EORS
+			{
+				// Exclusive OR
+				uint32_t *rd = getRegPtr(instArgs[1]);
+				uint32_t *rn = getRegPtr(instArgs[2]);
+				uint32_t *rm = getRegPtr(instArgs[3]);
+
+				*rd = *rn ^ *rm;
+
+				// TODO: update N,Z flags
+			}
 			break;
 		case 0xe4e:     // ISB
+			{
+				// Instruction Synchronization Barrier
+			}
 			break;
 		case 0xea1:     // LDM
+			{
+				// Load Multiple Registers
+			}
 			break;
 		case 0xea6:     // LDR
 			break;
@@ -384,12 +488,74 @@ int execInstruction(char* inst) {
 		case 0xdb8:     // LDRSH
 			break;
 		case 0x939:     // LSLS
+			{
+				// Logical Shift Left
+				uint32_t *rd = getRegPtr(instArgs[1]);
+				uint32_t *rm;
+				uint32_t *rs;
+				if (iLen == 3) {	// Rd is omitted
+					rm = getRegPtr(instArgs[1]);
+					rs = getRegPtr(instArgs[2]);
+				}
+				else {
+					rm = getRegPtr(instArgs[2]);
+					rs = getRegPtr(instArgs[3]);
+				}
+				if (*rs == NULL) {		// Immediate Value
+					instArgs[iLen-1] = instArgs[iLen-1]+1;	// Remove '#'
+					uint32_t imm = strtoint(instArgs[iLen-1]);
+
+					*rd = *rm << imm;
+				}
+				else {
+					*rd = *rm << *rs;
+				}
+
+				// TODO: update N,Z flags
+				// TODO: Uodate C flag to last bit shifted out except when shift length is 0
+			}
 			break;
 		case 0x969:     // LSRS
+			{
+				// Logical Shift Right
+				uint32_t *rd = getRegPtr(instArgs[1]);
+				uint32_t *rm;
+				uint32_t *rs;
+				if (iLen == 3) {	// Rd is omitted
+					rm = getRegPtr(instArgs[1]);
+					rs = getRegPtr(instArgs[2]);
+				}
+				else {
+					rm = getRegPtr(instArgs[2]);
+					rs = getRegPtr(instArgs[3]);
+				}
+				if (*rs == NULL) {		// Immediate Value
+					instArgs[iLen-1] = instArgs[iLen-1]+1;	// Remove '#'
+					uint32_t imm = strtoint(instArgs[iLen-1]);
+
+					*rd = *rm >> imm;
+				}
+				else {
+					*rd = *rm >> *rs;
+				}
+
+				// TODO: update N,Z flags
+				// TODO: Uodate C flag to last bit shifted out except when shift length is 0
+			}
 			break;
 		case 0xf42:     // MOV
+			{
+				// Move
+				uint32_t *rd = getRegPtr(instArgs[1]);
+				uint32_t *rm = getRegPtr(instArgs[2]);
+
+				*rd = *rm;
+			}
 			break;
 		case 0xa89:     // MOVS
+			{
+				// Same as move but update N,Z flags
+			}
 			break;
 		case 0xf57:     // MRS
 			break;
