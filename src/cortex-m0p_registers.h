@@ -4,10 +4,10 @@
 typedef struct {
 	// dgug Page 3-9
 	uint32_t APSR;		// Application Program Status Register
-						// Bit 31:	N (Negative Flag)
-						// Bit 30:	Z (Zero Flag)
-						// Bit 29:	C (Carry/Borrow Flag)
-						// Bit 28:	V (Overflow Flag)
+						// Bit 31:	N (Negative Flag)		1 when result of operation is negative, 0 if not
+						// Bit 30:	Z (Zero Flag)			1 when result of operation is 0, 0 if not
+						// Bit 29:	C (Carry/Borrow Flag)	1 if operation resulted in carry, 0 if not
+						// Bit 28:	V (Overflow Flag)		1 if operation caused overflow, 0 if not
 						// Bit 0-27: Reserved
 	uint32_t IPSR;		// Interrupt Program Status Register
 	uint32_t EPSR;		// Execution Program Status Register

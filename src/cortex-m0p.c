@@ -209,6 +209,14 @@ uint32_t* getRegPtr(char* reg) {
 	return NULL;
 }
 
+// Get the nth(bit) bit from value
+int getBit(int value, int bit) {
+	if (value & 1>>bit)
+		return 1;
+	else
+		return 0;
+}
+
 void updateFlag(char flag, int value) {
 	switch(flag) {
 		case 'N':
@@ -220,6 +228,9 @@ void updateFlag(char flag, int value) {
 		case 'V':
 			break;
 	}
+}
+int getFlag(char flag) {
+	return 0;
 }
 
 int execInstruction(char* inst) {
@@ -242,93 +253,387 @@ int execInstruction(char* inst) {
 
 	int instHash = instructionHash(instArgs[0]);
 	switch (instHash) {
-		case 0xf31:		// ADCS
+		// case 0xf31:		// ADCS
+		// 	{
+		// 		if (iLen != 4)
+		// 			return -1;
+
+		// 		uint32_t* regs[3];	// Rd, Rn, Rm
+		// 		uint32_t *rd = getRegPtr(instArgs[1]);
+		// 		uint32_t *rn = getRegPtr(instArgs[2]);
+		// 		uint32_t *rm = getRegPtr(instArgs[3]);
+
+		// 		// Rd = Rn + Rm + C (Conditional Carry flag in APSR)
+		// 		*rd = *rn + *rm + ((pcReg.PSR.APSR >> 29) & 1);
+		// 		if (pcReg.PSR.APSR) {				// If carry flag set
+		// 			pcReg.PSR.APSR &= ~(1 << 29);	// Reset carry flag
+		// 		}
+
+		// 		// Cast as long to obtain actual value
+		// 		long lrd = ((long) *rn) + ((long) *rm);
+		// 		if (lrd >= (1L << 32)) {				// If rd is bigger
+		// 			pcReg.PSR.APSR |= (1 << 29);	// Set the carry flag
+		// 		}
+
+		// 		// TODO: update N,Z,C,V flags
+		// 	}
+		// 	break;
+
+
+
+		// ========
+		// 	3.5.1
+		// ========
+		case 0xf31:		// ADCS		{Rd,} Rn, Rm
 			{
-				if (iLen != 4)
-					return -1;
-
-				uint32_t* regs[3];	// Rd, Rn, Rm
+				// Add with carry
 				uint32_t *rd = getRegPtr(instArgs[1]);
-				uint32_t *rn = getRegPtr(instArgs[2]);
-				uint32_t *rm = getRegPtr(instArgs[3]);
+				uint32_t *rn = getRegPtr(instArgs[iLen-2]);
+				uint32_t *rm = getRegPtr(instArgs[iLen-1]);
 
-				// Rd = Rn + Rm + C (Conditional Carry flag in APSR)
-				*rd = *rn + *rm + ((pcReg.PSR.APSR >> 29) & 1);
-				if (pcReg.PSR.APSR) {				// If carry flag set
-					pcReg.PSR.APSR &= ~(1 << 29);	// Reset carry flag
-				}
+				// Add another one if flag is set
+				int carrySet = getFlag('C');
+				*rd = *rn + *rm + carrySet;
 
-				// Cast as long to obtain actual value
-				long lrd = ((long) *rn) + ((long) *rm);
-				if (lrd >= (1L << 32)) {				// If rd is bigger
-					pcReg.PSR.APSR |= (1 << 29);	// Set the carry flag
-				}
+				// Update condition flags
+				updateFlag('N', (int32_t)*rd<0);
+				updateFlag('Z', *rd==0);
+				updateFlag('C', *rn + *rm + carrySet > 0xFFFFFFFF);
+				updateFlag(
+					'V',
+					(
+						// Adding 2 positives results in negative value
+						((int32_t)*rd < 0 && (int32_t)*rn > 0 && (int32_t)*rm > 0) ||
+						// Adding 2 negatives results in positive value
+						((int32_t)*rd > 0 && (int32_t)*rn < 0 && (int32_t)*rm < 0)
+					)
+				);
+				// if (
+				// 	((int32_t)*rd < 0 && (int32_t)*rn > 0 && (int32_t)*rm > 0) ||
+				// 	((int32_t)*rd > 0 && (int32_t)*rn < 0 && (int32_t)*rm < 0)
+				// 	)
+				// 	updateFlag('V', 1);
+				// else
+				// 	updateFlag('V', 0);
+				/*	For subtract
+				if (
+					((int32_t)*rd > 0 && (int32_t)*rn < 0 && (int32_t)*rm > 0) ||
+					((int32_t)*rd < 0 && (int32_t)*rn > 0 && (int32_t)*rm < 0)
+					)
+					updateFlag('V', 1);
+				else
+					updateFlag('V', 0);
+				*/
 
-				// for (int i=0; i<3; i++) {
-				// 	switch(pcRegNum(instArgs[i+1])) {
-				// 		case 0:
-				// 			regs[i] = &pcReg.R0;
-				// 			break;
-				// 		case 1:
-				// 			regs[i] = &pcReg.R1;
-				// 			break;
-				// 		case 2:
-				// 			regs[i] = &pcReg.R2;
-				// 			break;
-				// 		case 3:
-				// 			regs[i] = &pcReg.R3;
-				// 			break;
-				// 		case 4:
-				// 			regs[i] = &pcReg.R4;
-				// 			break;
-				// 		case 5:
-				// 			regs[i] = &pcReg.R5;
-				// 			break;
-				// 		case 6:
-				// 			regs[i] = &pcReg.R6;
-				// 			break;
-				// 		case 7:
-				// 			regs[i] = &pcReg.R7;
-				// 			break;
-				// 		default:
-				// 			return -2;
-				// 	}
-				// }
-				// // Rd = Rn + Rm + C (Conditional Carry flag in APSR)
-				// *regs[0] = *regs[1] + *regs[2] + ((pcReg.PSR.APSR >> 29) & 1);
-				// if (pcReg.PSR.APSR) {				// If carry flag set
-				// 	pcReg.PSR.APSR &= ~(1 << 29);	// Reset carry flag
-				// }
-
-				// // Cast as long to obtain actual value
-				// long rd = ((long) *regs[1]) + ((long) *regs[2]);
-				// if (rd >= (1L << 32)) {				// If rd is bigger
-				// 	pcReg.PSR.APSR |= (1 << 29);	// Set the carry flag
-				// }
-
-				// TODO: update N,Z,C,V flags
 			}
 			break;
-		case 0xbd8:     // ADD
+		case 0xbd8:     // ADD		{Rd,} Rn, <Rm|#imm>
+		case 0xf39:     // ADDS		Same as ADD but updates N,Z,C,V flags
 			{
 				uint32_t *rd = getRegPtr(instArgs[1]);
-				uint32_t *rm = getRegPtr(instArgs[2]);
-				uint32_t *rn = getRegPtr(instArgs[3]);
+				uint32_t *rn = getRegPtr(instArgs[iLen-2]);
+				uint32_t *rm = getRegPtr(instArgs[iLen-1]);
 
-				// TODO: Rd can be omitted
-
-				// If all are registers instead of immediate values
-				if (*rn != NULL)
-					*rd = *rm + *rn;
+				if (*rm == NULL) {		// Immediate value
+					*rd = *rn + strtoint(instArgs[iLen-1]+1);	// +1 to remove '#'
+				}
 				else {
-					instArgs[3] = instArgs[3]+1;		// Remove '#'
-					*rd = *rm + strtoint(instArgs[3]);
+					*rd = *rn + *rm;
+				}
+				// Only update condition flags for ADDS
+				if (instHash == 0xf39) {
+					updateFlag('N', (int32_t)*rd<0);
+					updateFlag('Z', *rd==0);
+					updateFlag('C', *rn + *rm > 0xFFFFFFFF);
+					updateFlag(
+						'V',
+						(
+							// Adding 2 positives results in negative value
+							((int32_t)*rd < 0 && (int32_t)*rn > 0 && (int32_t)*rm > 0) ||
+							// Adding 2 negatives results in positive value
+							((int32_t)*rd > 0 && (int32_t)*rn < 0 && (int32_t)*rm < 0)
+						)
+					);
 				}
 			}
 			break;
-		case 0xf39:     // ADDS
-			// Same as ADD but update N,Z,C,V flags
+		case 0x4e9:     // RSBS		{Rd,} Rn, Rm, #0
+			{
+				// TODO Uncertain what RSBS does
+				// Reverse Subtract
+				uint32_t *rd = getRegPtr(instArgs[1]);
+				uint32_t *rn = getRegPtr(instArgs[iLen-3]);
+				uint32_t *rm = getRegPtr(instArgs[iLen-2]);
+
+				*rd = *rm - *rn;
+
+				// Update condition flags
+				updateFlag('N', (int32_t)*rd<0);
+				updateFlag('Z', *rd==0);
+				updateFlag('C', *rn + *rm > 0xFFFFFFFF);
+				updateFlag(
+					'V',
+					(
+						// Adding 2 positives results in negative value
+						((int32_t)*rd < 0 && (int32_t)*rn > 0 && (int32_t)*rm > 0) ||
+						// Adding 2 negatives results in positive value
+						((int32_t)*rd > 0 && (int32_t)*rn < 0 && (int32_t)*rm < 0)
+					)
+				);
+			}
 			break;
+		case 0x2b1:     // SBCS		{Rd,} Rn, Rm
+			{
+				// Subtract with carry
+				uint32_t *rd = getRegPtr(instArgs[1]);
+				uint32_t *rn = getRegPtr(instArgs[iLen-2]);
+				uint32_t *rm = getRegPtr(instArgs[iLen-1]);
+
+				// Add another one if flag is set
+				int carrySet = getFlag('C');
+				*rd = *rn + *rm - carrySet;
+
+				// Update condition flags
+				updateFlag('N', (int32_t)*rd<0);
+				updateFlag('Z', *rd==0);
+				updateFlag('C', *rn < *rm);
+				updateFlag(
+					'V',
+					(
+						// Subtracting negative from positive results in negative value
+						((int32_t)*rd < 0 && (int32_t)*rn > 0 && (int32_t)*rm < 0) ||
+						// Subtracting positive from negative results in positive value
+						((int32_t)*rd > 0 && (int32_t)*rn < 0 && (int32_t)*rm > 0)
+					)
+				);
+			}
+			break;
+		case 0x0de:     // SUB		{Rd,} Rn, <Rm|#imm>
+		case 0x769:     // SUBS		Same as SUB but updates N,Z,C,V flags
+			{
+				// Subtract
+				uint32_t *rd = getRegPtr(instArgs[1]);
+				uint32_t *rn = getRegPtr(instArgs[iLen-2]);
+				uint32_t *rm = getRegPtr(instArgs[iLen-1]);
+				int imm;
+
+				if (*rm == NULL) {		// Immediate value
+					imm = strtoint(instArgs[iLen-1]+1);		// +1 to remove '#'
+				}
+				else {
+					imm = *rm;
+				}
+				*rd = *rn - imm;
+
+				// Only update condition flags for SUBS
+				if (instHash == 0x769) {
+					// Update condition flags
+					updateFlag('N', (int32_t)*rd<0);
+					updateFlag('Z', *rd==0);
+					updateFlag('C', *rn < imm);
+					updateFlag(
+						'V',
+						(
+							// Subtracting negative from positive results in negative value
+							((int32_t)*rd < 0 && (int32_t)*rn > 0 && (int32_t)*rm < 0) ||
+							// Subtracting positive from negative results in positive value
+							((int32_t)*rd > 0 && (int32_t)*rn < 0 && (int32_t)*rm > 0)
+						)
+					);
+				}
+			}
+			break;
+
+		// ========
+		// 3.5.2
+		// ========
+		// N & Z flags are updated, C & V are unaffected
+		case 0x1b9:     // ANDS		{Rd,} Rn, Rm
+			{
+				// Bitwise AND
+				uint32_t *rd = getRegPtr(instArgs[1]);
+				uint32_t *rn = getRegPtr(instArgs[iLen-2]);
+				uint32_t *rm = getRegPtr(instArgs[iLen-1]);
+
+				*rd = *rm & *rn;
+
+				updateFlag('N', (int32_t)*rd<0);
+				updateFlag('Z', *rd==0);
+			}
+			break;
+		case 0xf29:     // ORRS		{Rd,} Rn, Rm
+			{
+				// Inclusive OR
+				uint32_t *rd = getRegPtr(instArgs[1]);
+				uint32_t *rn = getRegPtr(instArgs[iLen-2]);
+				uint32_t *rm = getRegPtr(instArgs[iLen-1]);
+
+				*rd = *rn | *rm;
+
+				updateFlag('N', (int32_t)*rd<0);
+				updateFlag('Z', *rd==0);
+			}
+			break;
+		case 0xa69:     // EORS		{Rd,} Rn, Rm
+			{
+				// Exclusive OR
+				uint32_t *rd = getRegPtr(instArgs[1]);
+				uint32_t *rn = getRegPtr(instArgs[iLen-2]);
+				uint32_t *rm = getRegPtr(instArgs[iLen-1]);
+
+				*rd = *rn ^ *rm;
+
+				updateFlag('N', (int32_t)*rd<0);
+				updateFlag('Z', *rd==0);
+			}
+			break;
+		case 0x271:     // BICS		{Rd,} Rn, Rm
+			{
+				// Bit clear
+				uint32_t *rd = getRegPtr(instArgs[1]);
+				uint32_t *rn = getRegPtr(instArgs[iLen-2]);
+				uint32_t *rm = getRegPtr(instArgs[iLen-1]);
+
+				*rd = *rn & (~*rm);
+
+				updateFlag('N', (int32_t)*rd<0);
+				updateFlag('Z', *rd==0);
+			}
+			break;
+
+		// ========
+		// 3.5.3
+		// ========
+		// N & Z flags are updated, C is updated to last bit shifted out, V is unaffected
+		case 0x369:     // ASRS		{Rd,} Rm, <Rs|#imm>
+			{
+				/*
+				// Arithmetic Shift Right
+				uint32_t *rd = getRegPtr(instArgs[1]);
+				uint32_t *rm = getRegPtr(instArgs[iLen-2]);
+
+				uint32_t *rs = getRegPtr(instArgs[iLen-1]);
+				// Most significant bit
+				int msb = (*rm >> 31) & 1;
+				// Register holding shift length or immediate value
+				if (*rs != NULL) {	// Register
+					if ((*rd >> (*rs-1))
+						updateFlag('C', 1);
+					else
+						updateFlag('C', 0);
+					*rd = *rm >> *rs;
+					if (msb)	// If most significant bit is 1
+						*rd |= (uint32_t)(pow(2, (*rs)) - 1) << (32-*rs);
+				}
+				else {	// Immediate value
+					int imm = strtoint(instArgs[iLen-1]+1);
+					*rd = *rm >> imm;
+					if (msb)	// If most significant bit is 1
+						*rd |= (uint32_t)(pow(2, (imm)) - 1) << (32-imm);
+				}
+
+				// Update condition flags
+				updateFlag('N', (int32_t)*rd<0);
+				updateFlag('Z', *rd==0);
+				// TODO: Update carry flag
+
+				*/
+
+
+				uint32_t *rd = getRegPtr(instArgs[1]);
+				uint32_t *rm = getRegPtr(instArgs[iLen-2]);
+				// Rs / Immediate
+				uint32_t shiftLength = *getRegPtr(instArgs[iLen-1]);
+				if (shiftLength == NULL) {
+					shiftLength = strtoint(instArgs[iLen-1]+1);
+				}
+
+				int msb = getBit(*rm, 31);				// Most Significant Bit
+				updateFlag('C', getBit(*rm, shiftLength-1));	// Last Shifted Out Bit
+
+				*rd = *rm >> shiftLength;
+				if (msb)	// If most significant bit is set
+					*rd |= (uint32_t)(pow(2, (shiftLength)) - 1) << (32-shiftLength);
+
+
+				// Update condition flags
+				updateFlag('N', (int32_t)*rd<0);
+				updateFlag('Z', *rd==0);
+			}
+			break;
+		case 0x939:     // LSLS
+			{
+				// Logical Shift Left
+				uint32_t *rd = getRegPtr(instArgs[1]);
+				uint32_t *rm = getRegPtr(instArgs[iLen-2]);
+				// Rs / Immediate
+				uint32_t shiftLength = *getRegPtr(instArgs[iLen-1]);
+				if (shiftLength == NULL) {
+					shiftLength = strtoint(instArgs[iLen-1]+1);
+				}
+
+				updateFlag('C', getBit(*rm, 32-shiftLength));	// Last Shifted Out Bit
+
+				*rd = *rm << shiftLength;
+
+				// Update condition flags
+				updateFlag('N', (int32_t)*rd<0);
+				updateFlag('Z', *rd==0);
+			}
+			break;
+		case 0x969:     // LSRS
+			{
+				/*
+				// Logical Shift Right
+				uint32_t *rd = getRegPtr(instArgs[1]);
+				uint32_t *rm;
+				uint32_t *rs;
+				if (iLen == 3) {	// Rd is omitted
+					rm = getRegPtr(instArgs[1]);
+					rs = getRegPtr(instArgs[2]);
+				}
+				else {
+					rm = getRegPtr(instArgs[2]);
+					rs = getRegPtr(instArgs[3]);
+				}
+				if (*rs == NULL) {		// Immediate Value
+					instArgs[iLen-1] = instArgs[iLen-1]+1;	// Remove '#'
+					uint32_t imm = strtoint(instArgs[iLen-1]);
+
+					*rd = *rm >> imm;
+				}
+				else {
+					*rd = *rm >> *rs;
+				}
+
+				updateFlag('N', (int32_t)*rd<0);
+				updateFlag('Z', *rd==0);
+				// TODO: Uodate C flag to last bit shifted out except when shift length is 0
+				*/
+
+				// Logical Shift Right
+				uint32_t *rd = getRegPtr(instArgs[1]);
+				uint32_t *rm = getRegPtr(instArgs[iLen-2]);
+				// Rs / Immediate
+				uint32_t shiftLength = *getRegPtr(instArgs[iLen-1]);
+				if (shiftLength == NULL) {
+					shiftLength = strtoint(instArgs[iLen-1]+1);
+				}
+
+				updateFlag('C', getBit(*rm, shiftLength-1));	// Last Shifted Out Bit
+
+				*rd = *rm >> shiftLength;
+
+				// Update condition flags
+				updateFlag('N', (int32_t)*rd<0);
+				updateFlag('Z', *rd==0);
+			}
+			break;
+
+
+
+
+
 		case 0xbe6:     // ADR
 			// Generates a PC relative address
 			{
@@ -338,62 +643,7 @@ int execInstruction(char* inst) {
 				// TODO
 			}
 			break;
-		case 0x1b9:     // ANDS
-			{
-				// Bitwise AND
-				uint32_t *rd = getRegPtr(instArgs[1]);
-				uint32_t *rm = getRegPtr(instArgs[2]);
-				uint32_t *rn = getRegPtr(instArgs[3]);
-
-				*rd = *rm & *rn;
-
-				// TODO: update N,Z flags
-			}
-			break;
-		case 0x369:     // ASRS
-			{
-				uint32_t *rd = getRegPtr(instArgs[1]);
-				uint32_t *rm;
-				// Check if destination register Rd exists
-				if (iLen == 3) {
-					rm = getRegPtr(instArgs[1]);
-				}
-				else {
-					rm = getRegPtr(instArgs[2]);
-				}
-
-				uint32_t *rs = getRegPtr(instArgs[iLen-1]);		// TODO: check if ilen-1 is correct
-				// Most significant bit
-				int msb = (*rm >> 31) & 1;
-				// Register holding shift length or immediate value
-				if (*rs != NULL) {	// Register
-					*rd = *rm >> *rs;
-					if (msb)	// If most significant bit is 1
-						*rd |= (uint32_t)(pow(2, (*rs)) - 1) << (32-*rs);
-				}
-				else {	// Immediate value
-					int imm = strtoint(instArgs[iLen-1]);
-					*rd = *rm >> imm;
-					if (msb)	// If most significant bit is 1
-						*rd |= (uint32_t)(pow(2, (imm)) - 1) << (32-imm);
-				}
-
-				// TODO: update N,Z,C flags
-			}
-			break;
 		case 0x062:     // B
-			break;
-		case 0x271:     // BICS
-			// Bit clear
-			{
-				uint32_t *rd = getRegPtr(instArgs[1]);
-				uint32_t *rn = getRegPtr(instArgs[2]);
-				uint32_t *rm = getRegPtr(instArgs[3]);
-
-				*rd = *rn & (~*rm);
-
-				// TODO: update N,Z flags
-			}
 			break;
 		case 0x35a:     // BKPT
 			{
@@ -455,18 +705,6 @@ int execInstruction(char* inst) {
 				// Data Synchronization Barrier
 			}
 			break;
-		case 0xa69:     // EORS
-			{
-				// Exclusive OR
-				uint32_t *rd = getRegPtr(instArgs[1]);
-				uint32_t *rn = getRegPtr(instArgs[2]);
-				uint32_t *rm = getRegPtr(instArgs[3]);
-
-				*rd = *rn ^ *rm;
-
-				// TODO: update N,Z flags
-			}
-			break;
 		case 0xe4e:     // ISB
 			{
 				// Instruction Synchronization Barrier
@@ -486,62 +724,6 @@ int execInstruction(char* inst) {
 		case 0xdb2:     // LDRSB
 			break;
 		case 0xdb8:     // LDRSH
-			break;
-		case 0x939:     // LSLS
-			{
-				// Logical Shift Left
-				uint32_t *rd = getRegPtr(instArgs[1]);
-				uint32_t *rm;
-				uint32_t *rs;
-				if (iLen == 3) {	// Rd is omitted
-					rm = getRegPtr(instArgs[1]);
-					rs = getRegPtr(instArgs[2]);
-				}
-				else {
-					rm = getRegPtr(instArgs[2]);
-					rs = getRegPtr(instArgs[3]);
-				}
-				if (*rs == NULL) {		// Immediate Value
-					instArgs[iLen-1] = instArgs[iLen-1]+1;	// Remove '#'
-					uint32_t imm = strtoint(instArgs[iLen-1]);
-
-					*rd = *rm << imm;
-				}
-				else {
-					*rd = *rm << *rs;
-				}
-
-				// TODO: update N,Z flags
-				// TODO: Uodate C flag to last bit shifted out except when shift length is 0
-			}
-			break;
-		case 0x969:     // LSRS
-			{
-				// Logical Shift Right
-				uint32_t *rd = getRegPtr(instArgs[1]);
-				uint32_t *rm;
-				uint32_t *rs;
-				if (iLen == 3) {	// Rd is omitted
-					rm = getRegPtr(instArgs[1]);
-					rs = getRegPtr(instArgs[2]);
-				}
-				else {
-					rm = getRegPtr(instArgs[2]);
-					rs = getRegPtr(instArgs[3]);
-				}
-				if (*rs == NULL) {		// Immediate Value
-					instArgs[iLen-1] = instArgs[iLen-1]+1;	// Remove '#'
-					uint32_t imm = strtoint(instArgs[iLen-1]);
-
-					*rd = *rm >> imm;
-				}
-				else {
-					*rd = *rm >> *rs;
-				}
-
-				// TODO: update N,Z flags
-				// TODO: Uodate C flag to last bit shifted out except when shift length is 0
-			}
 			break;
 		case 0xf42:     // MOV
 			{
@@ -567,8 +749,6 @@ int execInstruction(char* inst) {
 			break;
 		case 0xf7c:     // NOP
 			break;
-		case 0xf29:     // ORRS
-			break;
 		case 0xffc:     // POP
 			break;
 		case 0x1e6:     // PUSH
@@ -581,10 +761,6 @@ int execInstruction(char* inst) {
 			break;
 		case 0x469:     // RORS
 			break;
-		case 0x4e9:     // RSBS
-			break;
-		case 0x2b1:     // SBCS
-			break;
 		case 0x072:     // SEV
 			break;
 		case 0x0e1:     // STM
@@ -594,10 +770,6 @@ int execInstruction(char* inst) {
 		case 0x798:     // STRB
 			break;
 		case 0x79e:     // STRH
-			break;
-		case 0x0de:     // SUB
-			break;
-		case 0x769:     // SUBS
 			break;
 		case 0x0e7:     // SVC
 			break;
