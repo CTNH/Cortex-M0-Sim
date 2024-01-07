@@ -11,12 +11,12 @@ default_target: all clean
 all:
 	mkdir -p $(BIN_DIR)
 	@$(MAKE) build
-	gcc -Wall -o $(BIN_DIR)pico_emu *.o
+	gcc -lm -Wall -o $(BIN_DIR)pico_emu *.o
 #gcc -Wall $(SRC_DIR)*.c -o $(BIN_DIR)pico_emu
 
 debug:
 	mkdir -p $(BIN_DIR)
-	gcc -g -Wall $(SRC_DIR)*.c -o $(BIN_DIR)pico_emu
+	gcc -g -lm -Wall $(SRC_DIR)*.c -o $(BIN_DIR)pico_emu
 
 # Produce object files
 build:
