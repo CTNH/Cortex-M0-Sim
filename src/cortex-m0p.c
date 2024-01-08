@@ -580,7 +580,7 @@ int execInstruction(char* inst) {
 					shiftLength = strtoint(instArgs[iLen-1]+1);
 				}
 
-				if (shiftLength % 32 == 0)
+				if (shiftLength != 0 && shiftLength % 32 == 0)
 					shiftLength = 32;
 				else if (shiftLength > 32) {
 					shiftLength %= 32;
@@ -697,39 +697,158 @@ int execInstruction(char* inst) {
 
 				*rd = ~*rm;
 
-				// Update condition flags
+				// Updates N,Z flags only
 				updateFlag('N', (int32_t)*rd<0);
 				updateFlag('Z', *rd==0);
 			}
 			break;
 
-
-
-		case 0xbe6:     // ADR
-			// Generates a PC relative address
+		// ========
+		// 3.5.6
+		// ========
+		case 0xbb9:     // MULS		Rd, Rn, Rm
 			{
 				uint32_t *rd = getRegPtr(instArgs[1]);
-				char* label = instArgs[2];
+				uint32_t *rn = getRegPtr(instArgs[2]);
+				uint32_t *rm = getRegPtr(instArgs[3]);
 
-				// TODO
+				*rd = *rn * *rm;
+
+				// Updates N,Z flags only
+				updateFlag('N', (int32_t)*rd<0);
+				updateFlag('Z', *rd==0);
 			}
 			break;
-		case 0x062:     // B
-			break;
-		case 0x35a:     // BKPT
+
+		// ========
+		// 3.5.7		Reverse Bytes
+		// ========
+		case 0x032:     // REV		Rd, Rn
 			{
-				// Breakpoint
+				// 0x12345678 -> 0x78563412
+				uint32_t *rd = getRegPtr(instArgs[1]);
+				uint32_t *rn = getRegPtr(instArgs[2]);
+
+				*rd = 0;
+				for (int i=0; i<4; i++)
+					*rd |= ((*rn >> i*8) & 0xFF) << (3-i)*8;
 			}
+			break;
+		case 0xe76:     // REV16	Rd, Rn
+			{
+				// 0x12345678 -> 0x34127856
+				uint32_t *rd = getRegPtr(instArgs[1]);
+				uint32_t *rn = getRegPtr(instArgs[2]);
+
+				*rd = 0;
+				*rd |= (*rn >> 24) << 16;
+				*rd |= ((*rn >> 16) & 0xFF) << 24;
+				*rd |= (*rn >> 8) & 0xFF;
+				*rd |= (*rn & 0xFF) << 8;
+			}
+			break;
+		case 0x0b8:     // REVSH	Rd, Rn
+			{
+				// 0x12345678 -> 0x00007856
+				uint32_t *rd = getRegPtr(instArgs[1]);
+				uint32_t *rn = getRegPtr(instArgs[2]);
+
+				*rd = 0;
+				*rd |= (*rn >> 8) & 0xFF;
+				*rd |= (*rn & 0xFF) << 8;
+
+				// TODO: signed bit
+			}
+			break;
+
+		// ========
+		// 3.5.8
+		// ========
+		case 0x8a8:     // SXTB		Rd, Rm
+			{
+				// Signed Extend Byte
+				uint32_t *rd = getRegPtr(instArgs[1]);
+				uint32_t *rm = getRegPtr(instArgs[2]);
+
+				*rd = *rm & 0xFF;
+				if ((int8_t)*rd < 0)
+					*rd |= 0xFFFFFF00;
+			}
+			break;
+		case 0x8ae:     // SXTH		Rd, Rm
+			{
+				// Signed Extend Halfword
+				uint32_t *rd = getRegPtr(instArgs[1]);
+				uint32_t *rm = getRegPtr(instArgs[2]);
+
+				*rd = *rm & 0xFFFF;
+				if ((int16_t)*rd < 0)
+					*rd |= 0xFFFF0000;
+			}
+			break;
+		case 0xca8:     // UXTB		Rd, Rm
+			{
+				// Unsigned Extend Byte
+				uint32_t *rd = getRegPtr(instArgs[1]);
+				uint32_t *rm = getRegPtr(instArgs[2]);
+
+				*rd = *rm & 0xFF;
+			}
+			break;
+		case 0xcae:     // UXTH		Rd, Rm
+			{
+				// Unsigned Extend Halfword
+				uint32_t *rd = getRegPtr(instArgs[1]);
+				uint32_t *rm = getRegPtr(instArgs[2]);
+
+				*rd = *rm & 0xFFFF;
+			}
+			break;
+		
+		// ========
+		// 3.5.9
+		// ========
+		case 0x120:     // TST		Rn, Rm
+			{
+				// Same as ANDS but discards result
+				uint32_t *rn = getRegPtr(instArgs[iLen-2]);
+				uint32_t *rm = getRegPtr(instArgs[iLen-1]);
+
+				uint32_t result = *rm & *rn;
+
+				updateFlag('N', (int32_t)result<0);
+				updateFlag('Z', result==0);
+			}
+			break;
+
+
+		// ========
+		// 3.6.1
+		// ========
+		case 0x062:     // B
 			break;
 		case 0x37e:     // BL
 			{
 				// Branch with link call to function
 			}
 			break;
-		case 0xc6c:     // BLX
-			break;
 		case 0x38a:     // BX
 			break;
+		case 0xc6c:     // BLX
+			break;
+
+		// ========
+		// 3.7.1
+		// ========
+		case 0x35a:     // BKPT
+			{
+				// Breakpoint
+			}
+			break;
+
+		// ========
+		// 3.7.2		Change Processor State
+		// ========
 		case 0x5a4:     // CPSID
 			{
 				// TODO check if current execution mode is privileged
@@ -744,19 +863,70 @@ int execInstruction(char* inst) {
 				pcReg.PRIMASK &= ~1;
 			}
 			break;
+
+		// ========
+		// 3.7.3
+		// ========
 		case 0xcde:     // DMB
 			{
 				// Data Memory Barrier
 			}
 			break;
+
+		// ========
+		// 3.7.4
+		// ========
 		case 0xd0e:     // DSB
 			{
 				// Data Synchronization Barrier
 			}
 			break;
+
+		// ========
+		// 3.7.5
+		// ========
 		case 0xe4e:     // ISB
 			{
 				// Instruction Synchronization Barrier
+			}
+			break;
+
+		// ========
+		// 3.7.6
+		// ========
+		case 0xf57:     // MRS
+			{
+				uint32_t *rd = getRegPtr(instArgs[1]);
+				uint32_t *spec_reg = getRegPtr(instArgs[2]);
+
+				// TODO: Check if current execution mode is privieged; if not all values other then ASPR is 0
+			}
+			break;
+
+		// ========
+		// 3.7.7
+		// ========
+		case 0xf5e:     // MSR
+			break;
+
+		// ========
+		// 3.7.8
+		// ========
+		case 0xf7c:     // NOP
+			break;
+
+
+
+
+
+
+		case 0xbe6:     // ADR
+			// Generates a PC relative address
+			{
+				uint32_t *rd = getRegPtr(instArgs[1]);
+				char* label = instArgs[2];
+
+				// TODO
 			}
 			break;
 		case 0xea1:     // LDM
@@ -774,23 +944,9 @@ int execInstruction(char* inst) {
 			break;
 		case 0xdb8:     // LDRSH
 			break;
-		case 0xf57:     // MRS
-			break;
-		case 0xf5e:     // MSR
-			break;
-		case 0xbb9:     // MULS
-			break;
-		case 0xf7c:     // NOP
-			break;
 		case 0xffc:     // POP
 			break;
 		case 0x1e6:     // PUSH
-			break;
-		case 0x032:     // REV
-			break;
-		case 0xe76:     // REV16
-			break;
-		case 0x0b8:     // REVSH
 			break;
 		case 0x072:     // SEV
 			break;
@@ -803,16 +959,6 @@ int execInstruction(char* inst) {
 		case 0x79e:     // STRH
 			break;
 		case 0x0e7:     // SVC
-			break;
-		case 0x8a8:     // SXTB
-			break;
-		case 0x8ae:     // SXTH
-			break;
-		case 0x120:     // TST
-			break;
-		case 0xca8:     // UXTB
-			break;
-		case 0xcae:     // UXTH
 			break;
 		case 0x169:     // WFE
 			break;
