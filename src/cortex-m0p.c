@@ -596,6 +596,112 @@ int execInstruction(char* inst) {
 			}
 			break;
 
+		// ========
+		// 3.5.4
+		// ========
+		case 0xcac:     // CMP		Rn, <Rm|#imm>
+			{
+				// Compare
+				// Same as SUBS but discard values
+				uint32_t *rn = getRegPtr(instArgs[1]);
+				uint32_t *rm = getRegPtr(instArgs[2]);
+
+				uint32_t result = *rn + *rm;
+
+				int imm;
+				if (*rm == NULL) {		// Immediate value
+					imm = strtoint(instArgs[iLen-1]+1);		// +1 to remove '#'
+				}
+				else {
+					imm = *rm;
+				}
+				result = *rn - imm;
+
+				// Update condition flags
+				updateFlag('N', (int32_t)result<0);
+				updateFlag('Z', result==0);
+				updateFlag('C', *rn < imm);
+				updateFlag(
+					'V',
+					(
+						// Subtracting negative from positive results in negative value
+						((int32_t)result < 0 && (int32_t)*rn > 0 && (int32_t)*rm < 0) ||
+						// Subtracting positive from negative results in positive value
+						((int32_t)result > 0 && (int32_t)*rn < 0 && (int32_t)*rm > 0)
+					)
+				);
+			}
+			break;
+		case 0xcaa:     // CMN		Rn, Rm
+			{
+				// Compare Negative
+				// Same as ADDS but discard values
+				uint32_t *rn = getRegPtr(instArgs[1]);
+				uint32_t *rm = getRegPtr(instArgs[2]);
+
+				uint32_t result = *rn + *rm;
+
+				updateFlag('N', (int32_t)result<0);
+				updateFlag('Z', result==0);
+				updateFlag('C', *rn + *rm > 0xFFFFFFFF);
+				updateFlag(
+					'V',
+					(
+						// Adding 2 positives results in negative value
+						((int32_t)result < 0 && (int32_t)*rn > 0 && (int32_t)*rm > 0) ||
+						// Adding 2 negatives results in positive value
+						((int32_t)result > 0 && (int32_t)*rn < 0 && (int32_t)*rm < 0)
+					)
+				);
+			}
+			break;
+
+		// ========
+		// 3.5.5
+		// ========
+		// TODO: Handle when Rd is PC in a MOV instruction
+		case 0xf42:     // MOV		Rd, Rm
+			{
+				// Move
+				uint32_t *rd = getRegPtr(instArgs[1]);
+				uint32_t *rm = getRegPtr(instArgs[2]);
+
+				*rd = *rm;
+			}
+			break;
+		case 0xa89:     // MOVS		Rd, <Rm|#imm>
+			{
+				// Same as move but Rm maybe immediate and update N,Z flags
+				uint32_t *rd = getRegPtr(instArgs[1]);
+				uint32_t *rm = getRegPtr(instArgs[2]);
+
+				if (*rm == NULL) {		// Immediate
+					*rd = strtoint(instArgs[2]+1);		// +1 to remove '#'
+				}
+				else {
+					*rd = *rm;
+				}
+
+				// Only update condition flags for MOVS
+				if (instHash == 0xa89) {
+					updateFlag('N', (int32_t)*rd<0);
+					updateFlag('Z', *rd==0);
+				}
+			}
+			break;
+		case 0xc09:     // MVNS
+			{
+				// Move NOT
+				uint32_t *rd = getRegPtr(instArgs[1]);
+				uint32_t *rm = getRegPtr(instArgs[2]);
+
+				*rd = ~*rm;
+
+				// Update condition flags
+				updateFlag('N', (int32_t)*rd<0);
+				updateFlag('Z', *rd==0);
+			}
+			break;
 
 
 
@@ -623,28 +729,6 @@ int execInstruction(char* inst) {
 		case 0xc6c:     // BLX
 			break;
 		case 0x38a:     // BX
-			break;
-		case 0xcaa:     // CMN
-			{
-				// Compare Negative
-				uint32_t *rn = getRegPtr(instArgs[1]);
-				uint32_t *rm = getRegPtr(instArgs[2]);
-
-				// TODO
-			}
-			break;
-		case 0xcac:     // CMP
-			{
-				// Compare
-				uint32_t *rn = getRegPtr(instArgs[1]);
-				uint32_t *rm = getRegPtr(instArgs[2]);
-
-				// TODO
-				// Immediate value
-				if (*rm == NULL) {
-				}
-				else {}
-			}
 			break;
 		case 0x5a4:     // CPSID
 			{
@@ -690,27 +774,11 @@ int execInstruction(char* inst) {
 			break;
 		case 0xdb8:     // LDRSH
 			break;
-		case 0xf42:     // MOV
-			{
-				// Move
-				uint32_t *rd = getRegPtr(instArgs[1]);
-				uint32_t *rm = getRegPtr(instArgs[2]);
-
-				*rd = *rm;
-			}
-			break;
-		case 0xa89:     // MOVS
-			{
-				// Same as move but update N,Z flags
-			}
-			break;
 		case 0xf57:     // MRS
 			break;
 		case 0xf5e:     // MSR
 			break;
 		case 0xbb9:     // MULS
-			break;
-		case 0xc09:     // MVNS
 			break;
 		case 0xf7c:     // NOP
 			break;
