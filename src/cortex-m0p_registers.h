@@ -76,10 +76,10 @@ typedef struct __attribute__((__packed__)) {
 
 // Memory Protection Unit
 typedef struct __attribute__((__packed__)) {
-	uint32_t TYPE;
-	uint32_t CTRL;
-	uint32_t RNR;
-	uint32_t RBAR;
-	uint32_t RASR;
+	uint32_t TYPE;		// Type Register
+	uint32_t CTRL;		// Control Register
+	uint32_t RNR;		// Region Number Register
+	uint32_t RBAR;		// Region Base Address Register
+	uint32_t RASR;		// Region Attribute and Size Register
 } MPU_Register;
 

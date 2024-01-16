@@ -209,17 +209,21 @@ char* strReplace(char* str, char* old, char* replacement, int count) {
     return out;
 }
 
+// Converts number from a string to an integer
 int strtoint(char* str) {
-	int out = 0;
+	// int out = 0;
 
-	for (int i=0; i<strlen(str); i++) {
-		if (str[i] >= '0' && str[i] <= '9')
-			// Move original by a tenth unit and add new digit
-			out = out*10 + (str[i]-'0');
-		else
-			// If character is not a number
-			break;
-	}
-	return out;
+	// for (int i=0; i<strlen(str); i++) {
+	// 	if (str[i] >= '0' && str[i] <= '9')
+	// 		// Move original by a tenth unit and add new digit
+	// 		out = out*10 + (str[i]-'0');
+	// 	else
+	// 		// If character is not a number
+	// 		break;
+	// }
+
+	// return out;
+
+	return (int)strtol(str, NULL, 0);
 }
 

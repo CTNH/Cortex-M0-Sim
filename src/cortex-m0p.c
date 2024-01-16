@@ -12,6 +12,11 @@ SystemControl_Register scReg;
 NVIC_Register nvicReg;
 MPU_Register mpuReg;
 
+uint8_t memory[0xFFFFFFFF];
+
+// Cycle counts for each instruction listed in RP2040 Datasheet page 69
+int cycle = 0;
+
 int instructionHash(char* inst) {
 	int hash = 0;
 	for (int i = 0; i < strlen(inst); i++) {
@@ -280,6 +285,76 @@ int execInstruction(char* inst) {
 		// 	break;
 
 
+		// 3.4 		Memory Access Instructions
+
+		// ========
+		// 3.4.1
+		// ========
+		case 0xbe6:     // ADR
+			{
+				// Generates a PC relative address
+				uint32_t *rd = getRegPtr(instArgs[1]);
+				char* label = instArgs[2];
+
+				// TODO
+
+				cycle++;
+			}
+			break;
+
+
+		// ========
+		// 3.4.2-4?
+		// ========
+		case 0xea6:     // LDR
+			{
+				// Load; immediate offset, register offset, PC-relative address
+				uint32_t *rt = getRegPtr(instArgs[1]);
+				uint32_t *rn = getRegPtr(instArgs[2]+1);	// +1 to remove '['
+				uint32_t *rm = getRegPtr(instArgs[3]);
+			}
+			break;
+
+		case 0x598:     // LDRB
+			break;
+
+		case 0x59e:     // LDRH
+			break;
+
+		case 0xdb2:     // LDRSB
+			break;
+
+		case 0xdb8:     // LDRSH
+			break;
+
+		case 0x0e6:     // STR
+			break;
+		case 0x798:     // STRB
+			break;
+		case 0x79e:     // STRH
+			break;
+
+
+		// ========
+		// 3.4.5
+		// ========
+		case 0xea1:     // LDM
+			{
+				// Load Multiple Registers
+			}
+			break;
+		case 0x0e1:     // STM
+			break;
+
+
+		// ========
+		// 3.4.6
+		// ========
+		case 0xffc:     // POP
+			break;
+		case 0x1e6:     // PUSH
+			break;
+
 
 		// ========
 		// 	3.5.1
@@ -325,6 +400,7 @@ int execInstruction(char* inst) {
 					updateFlag('V', 0);
 				*/
 
+				cycle++;
 			}
 			break;
 		case 0xbd8:     // ADD		{Rd,} Rn, <Rm|#imm>
@@ -355,6 +431,9 @@ int execInstruction(char* inst) {
 						)
 					);
 				}
+
+				cycle++;
+				// TODO: If Rd is PC move cycle is 2
 			}
 			break;
 		case 0x4e9:     // RSBS		{Rd,} Rn, Rm, #0
@@ -380,6 +459,8 @@ int execInstruction(char* inst) {
 						((int32_t)*rd > 0 && (int32_t)*rn < 0 && (int32_t)*rm < 0)
 					)
 				);
+
+				cycle++;
 			}
 			break;
 		case 0x2b1:     // SBCS		{Rd,} Rn, Rm
@@ -406,6 +487,7 @@ int execInstruction(char* inst) {
 						((int32_t)*rd > 0 && (int32_t)*rn < 0 && (int32_t)*rm > 0)
 					)
 				);
+				cycle++;
 			}
 			break;
 		case 0x0de:     // SUB		{Rd,} Rn, <Rm|#imm>
@@ -441,6 +523,7 @@ int execInstruction(char* inst) {
 						)
 					);
 				}
+				cycle++;
 			}
 			break;
 
@@ -459,6 +542,8 @@ int execInstruction(char* inst) {
 
 				updateFlag('N', (int32_t)*rd<0);
 				updateFlag('Z', *rd==0);
+
+				cycle++;
 			}
 			break;
 		case 0xf29:     // ORRS		{Rd,} Rn, Rm
@@ -472,6 +557,8 @@ int execInstruction(char* inst) {
 
 				updateFlag('N', (int32_t)*rd<0);
 				updateFlag('Z', *rd==0);
+
+				cycle++;
 			}
 			break;
 		case 0xa69:     // EORS		{Rd,} Rn, Rm
@@ -485,6 +572,8 @@ int execInstruction(char* inst) {
 
 				updateFlag('N', (int32_t)*rd<0);
 				updateFlag('Z', *rd==0);
+
+				cycle++;
 			}
 			break;
 		case 0x271:     // BICS		{Rd,} Rn, Rm
@@ -498,6 +587,8 @@ int execInstruction(char* inst) {
 
 				updateFlag('N', (int32_t)*rd<0);
 				updateFlag('Z', *rd==0);
+
+				cycle++;
 			}
 			break;
 
@@ -527,6 +618,8 @@ int execInstruction(char* inst) {
 				// Update condition flags
 				updateFlag('N', (int32_t)*rd<0);
 				updateFlag('Z', *rd==0);
+
+				cycle++;
 			}
 			break;
 		case 0x939:     // LSLS
@@ -547,6 +640,8 @@ int execInstruction(char* inst) {
 				// Update condition flags
 				updateFlag('N', (int32_t)*rd<0);
 				updateFlag('Z', *rd==0);
+
+				cycle++;
 			}
 			break;
 		case 0x969:     // LSRS
@@ -567,6 +662,8 @@ int execInstruction(char* inst) {
 				// Update condition flags
 				updateFlag('N', (int32_t)*rd<0);
 				updateFlag('Z', *rd==0);
+
+				cycle++;
 			}
 			break;
 		case 0x469:     // RORS
@@ -593,6 +690,8 @@ int execInstruction(char* inst) {
 				// Update condition flags
 				updateFlag('N', (int32_t)*rd<0);
 				updateFlag('Z', *rd==0);
+
+				cycle++;
 			}
 			break;
 
@@ -630,6 +729,8 @@ int execInstruction(char* inst) {
 						((int32_t)result > 0 && (int32_t)*rn < 0 && (int32_t)*rm > 0)
 					)
 				);
+
+				cycle++;
 			}
 			break;
 		case 0xcaa:     // CMN		Rn, Rm
@@ -653,6 +754,8 @@ int execInstruction(char* inst) {
 						((int32_t)result > 0 && (int32_t)*rn < 0 && (int32_t)*rm < 0)
 					)
 				);
+
+				cycle++;
 			}
 			break;
 
@@ -667,6 +770,10 @@ int execInstruction(char* inst) {
 				uint32_t *rm = getRegPtr(instArgs[2]);
 
 				*rd = *rm;
+
+
+				cycle++;
+				// TODO: If Rd is PC move cycle is 2
 			}
 			break;
 		case 0xa89:     // MOVS		Rd, <Rm|#imm>
@@ -687,6 +794,8 @@ int execInstruction(char* inst) {
 					updateFlag('N', (int32_t)*rd<0);
 					updateFlag('Z', *rd==0);
 				}
+
+				cycle++;
 			}
 			break;
 		case 0xc09:     // MVNS
@@ -700,6 +809,8 @@ int execInstruction(char* inst) {
 				// Updates N,Z flags only
 				updateFlag('N', (int32_t)*rd<0);
 				updateFlag('Z', *rd==0);
+
+				cycle++;
 			}
 			break;
 
@@ -732,6 +843,8 @@ int execInstruction(char* inst) {
 				*rd = 0;
 				for (int i=0; i<4; i++)
 					*rd |= ((*rn >> i*8) & 0xFF) << (3-i)*8;
+
+				cycle++;
 			}
 			break;
 		case 0xe76:     // REV16	Rd, Rn
@@ -745,6 +858,8 @@ int execInstruction(char* inst) {
 				*rd |= ((*rn >> 16) & 0xFF) << 24;
 				*rd |= (*rn >> 8) & 0xFF;
 				*rd |= (*rn & 0xFF) << 8;
+
+				cycle++;
 			}
 			break;
 		case 0x0b8:     // REVSH	Rd, Rn
@@ -758,6 +873,8 @@ int execInstruction(char* inst) {
 				*rd |= (*rn & 0xFF) << 8;
 
 				// TODO: signed bit
+
+				cycle++;
 			}
 			break;
 
@@ -773,6 +890,8 @@ int execInstruction(char* inst) {
 				*rd = *rm & 0xFF;
 				if ((int8_t)*rd < 0)
 					*rd |= 0xFFFFFF00;
+
+				cycle++;
 			}
 			break;
 		case 0x8ae:     // SXTH		Rd, Rm
@@ -784,6 +903,8 @@ int execInstruction(char* inst) {
 				*rd = *rm & 0xFFFF;
 				if ((int16_t)*rd < 0)
 					*rd |= 0xFFFF0000;
+
+				cycle++;
 			}
 			break;
 		case 0xca8:     // UXTB		Rd, Rm
@@ -793,6 +914,8 @@ int execInstruction(char* inst) {
 				uint32_t *rm = getRegPtr(instArgs[2]);
 
 				*rd = *rm & 0xFF;
+
+				cycle++;
 			}
 			break;
 		case 0xcae:     // UXTH		Rd, Rm
@@ -802,6 +925,8 @@ int execInstruction(char* inst) {
 				uint32_t *rm = getRegPtr(instArgs[2]);
 
 				*rd = *rm & 0xFFFF;
+
+				cycle++;
 			}
 			break;
 		
@@ -818,6 +943,8 @@ int execInstruction(char* inst) {
 
 				updateFlag('N', (int32_t)result<0);
 				updateFlag('Z', result==0);
+
+				cycle++;
 			}
 			break;
 
@@ -913,53 +1040,35 @@ int execInstruction(char* inst) {
 		// 3.7.8
 		// ========
 		case 0xf7c:     // NOP
+			// Does nothing
 			break;
 
-
-
-
-
-
-		case 0xbe6:     // ADR
-			// Generates a PC relative address
-			{
-				uint32_t *rd = getRegPtr(instArgs[1]);
-				char* label = instArgs[2];
-
-				// TODO
-			}
-			break;
-		case 0xea1:     // LDM
-			{
-				// Load Multiple Registers
-			}
-			break;
-		case 0xea6:     // LDR
-			break;
-		case 0x598:     // LDRB
-			break;
-		case 0x59e:     // LDRH
-			break;
-		case 0xdb2:     // LDRSB
-			break;
-		case 0xdb8:     // LDRSH
-			break;
-		case 0xffc:     // POP
-			break;
-		case 0x1e6:     // PUSH
-			break;
+		// ========
+		// 3.7.9
+		// ========
 		case 0x072:     // SEV
+			{
+				// Send Event
+			}
 			break;
-		case 0x0e1:     // STM
-			break;
-		case 0x0e6:     // STR
-			break;
-		case 0x798:     // STRB
-			break;
-		case 0x79e:     // STRH
-			break;
+
+		// ========
+		// 3.7.9
+		// ========
 		case 0x0e7:     // SVC
+			{
+				// Supervisor Call
+			}
 			break;
+
+
+
+
+
+
+
+
+
 		case 0x169:     // WFE
 			break;
 		case 0x16d:     // WFI
