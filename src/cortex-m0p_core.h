@@ -14,6 +14,10 @@ class CM0P_Core {
 		uint32_t		PSR;		// Program Status Register
 		uint32_t		PRIMASK;
 		uint32_t		CONTROL;
+		// Declare pointers to the general purpose registers
+		uint32_t*		SP = &R[13];
+		uint32_t*		LR = &R[14];
+		uint32_t*		PC = &R[15];
 
 		CM0P_Memory memory;
 

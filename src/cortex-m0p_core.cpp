@@ -397,10 +397,22 @@ void CM0P_Core::step_inst() {
 		switch ((opcode >> 8) & 0b11) {
 			// Add Registers
 			case 0b00:
+				{
+					uint8_t Rm = (opcode >> 3) & 0xF;
+					uint8_t Rdn = opcode & 0b111;
+				}
 				break;
 
 			// Compare Registers / Unpredictable
 			case 0b01:
+				switch((opcode >> 6) & 0b11) {
+					// Unpredictable
+					case 0b00:
+						break;
+
+					case 0b01:
+						break;
+				}
 				break;
 
 			// MOV Move Registers
@@ -414,6 +426,234 @@ void CM0P_Core::step_inst() {
 
 			// Branch
 			case 0b11:
+				// BLX Branch with Link and Exchange Register
+				if ((opcode >> 7) & 1) {
+					uint8_t Rm = (opcode >> 3) & 0xF;
+					// If bit[0] of Rm is 0
+					if (~(R[Rm] & 1)) {
+						// TODO: Hardfault exception
+					}
+				}
+				// BX Branch and Exchange
+				else {
+					uint8_t Rm = (opcode >> 3) & 0xF;
+					// If bit[0] of Rm is 0
+					if (~(R[Rm] & 1)) {
+						// TODO: Hardfault exception
+					}
+				}
+				break;
+		}
+	}
+	// LDR (Literal)
+	else if (opcode >> 11 == 0b01001) {
+		uint8_t imm8 = opcode & 0xFF;
+		uint8_t Rt = (opcode >> 8) & 0b111;
+	}
+	// A5.2.4 Load/Store single data item
+	else if (opcode >> 12 <= 0b1001) {
+		switch (opcode >> 12) {
+			case 0b0101:
+				switch ((opcode >> 9) & 0b111) {
+					// STR (register) - Store Register
+					case 0b000:
+						{
+							uint8_t Rm = (opcode >> 6) & 0b111;
+							uint8_t Rn = (opcode >> 3) & 0b111;
+							uint8_t Rt = opcode & 0b111;
+							memory.write_word(R[Rm] + R[Rn], R[Rt]);
+						}
+						break;
+					// STRH (register) - Store Register Halfword
+					case 0b001:
+						{
+							uint8_t Rm = (opcode >> 6) & 0b111;
+							uint8_t Rn = (opcode >> 3) & 0b111;
+							uint8_t Rt = opcode & 0b111;
+							memory.write_halfword(R[Rm] + R[Rn], R[Rt]);
+						}
+						break;
+					// STRB (register) - Store Register Byte
+					case 0b010:
+						{
+							uint8_t Rm = (opcode >> 6) & 0b111;
+							uint8_t Rn = (opcode >> 3) & 0b111;
+							uint8_t Rt = opcode & 0b111;
+							memory.write_byte(R[Rm] + R[Rn], R[Rt]);
+						}
+						break;
+					// LDRSB (register) - Load Register Signed Byte
+					case 0b011:
+						{
+							uint8_t Rm = (opcode >> 6) & 0b111;
+							uint8_t Rn = (opcode >> 3) & 0b111;
+							uint8_t Rt = opcode & 0b111;
+							uint32_t data = memory.read_byte(R[Rm] + R[Rn]);
+							// If most significant bit is set
+							if (data & 0x80)
+								data |= 0xFFFFFF00;
+							R[Rt] = data;
+						}
+						break;
+					// LDR (register) - Load Register
+					case 0b100:
+						{
+							uint8_t Rm = (opcode >> 6) & 0b111;
+							uint8_t Rn = (opcode >> 3) & 0b111;
+							uint8_t Rt = opcode & 0b111;
+							R[Rt] = memory.read_word(R[Rm] + R[Rn]);
+						}
+						break;
+					// LDRH (register) - Load Register Halfword
+					case 0b101:
+						{
+							uint8_t Rm = (opcode >> 6) & 0b111;
+							uint8_t Rn = (opcode >> 3) & 0b111;
+							uint8_t Rt = opcode & 0b111;
+							R[Rt] = memory.read_halfword(R[Rm] + R[Rn]);
+						}
+						break;
+					// LDRB (register) - Load Register Byte
+					case 0b110:
+						{
+							uint8_t Rm = (opcode >> 6) & 0b111;
+							uint8_t Rn = (opcode >> 3) & 0b111;
+							uint8_t Rt = opcode & 0b111;
+							R[Rt] = memory.read_byte(R[Rm] + R[Rn]);
+						}
+						break;
+					// LDRSH (register) - Load Register Signed Halfword
+					case 0b111:
+						{
+							uint8_t Rm = (opcode >> 6) & 0b111;
+							uint8_t Rn = (opcode >> 3) & 0b111;
+							uint8_t Rt = opcode & 0b111;
+							uint32_t data = memory.read_halfword(R[Rm] + R[Rn]);
+							if (data & 0x8000) {
+								data |= 0xFFFF0000;
+							}
+							R[Rt] = data;
+						}
+						break;
+				}
+				break;
+			case 0b0110:
+				// LDR (immediate) - Load Register
+				if ((opcode >> 11) & 1) {
+					uint8_t imm5 = (opcode >> 6) & 0b11111;
+					uint8_t Rn = (opcode >> 3) & 0b111;
+					uint8_t Rt = opcode & 0b111;
+					R[Rt] = memory.read_word(imm5 + R[Rn]);
+				}
+				// STR (immediate) - Store Register
+				else {
+					uint8_t imm5 = (opcode >> 6) & 0b11111;
+					uint8_t Rn = (opcode >> 3) & 0b111;
+					uint8_t Rt = opcode & 0b111;
+					memory.write_word(imm5 + R[Rn], R[Rt]);
+				}
+				break;
+			case 0b0111:
+				// LDRB (immediate) - Load Register Byte
+				if ((opcode >> 11) & 1) {
+					uint8_t imm5 = (opcode >> 6) & 0b11111;
+					uint8_t Rn = (opcode >> 3) & 0b111;
+					uint8_t Rt = opcode & 0b111;
+					R[Rt] = memory.read_byte(imm5 + R[Rn]);
+				}
+				// STRB (immediate) - Store Register Byte
+				else {
+					uint8_t imm5 = (opcode >> 6) & 0b11111;
+					uint8_t Rn = (opcode >> 3) & 0b111;
+					uint8_t Rt = opcode & 0b111;
+					memory.write_byte(imm5 + R[Rn], R[Rt]);
+				}
+				break;
+			case 0b1000:
+				// LDRH (immediate) - Load Register Halfword
+				if ((opcode >> 11) & 1) {
+					uint8_t imm5 = (opcode >> 6) & 0b11111;
+					uint8_t Rn = (opcode >> 3) & 0b111;
+					uint8_t Rt = opcode & 0b111;
+					R[Rt] = memory.read_halfword(imm5 + R[Rn]);
+				}
+				// STRH (immediate) - Store Register Halfword
+				else {
+					uint8_t imm5 = (opcode >> 6) & 0b11111;
+					uint8_t Rn = (opcode >> 3) & 0b111;
+					uint8_t Rt = opcode & 0b111;
+					memory.write_halfword(imm5 + R[Rn], R[Rt]);
+				}
+				break;
+			case 0b1001:
+				// LDR (immediate) - Load Register SP Relative
+				if ((opcode >> 11) & 1) {
+					uint8_t Rt = (opcode >> 8) & 0b111;
+					uint8_t imm8 = opcode & 0xFF;
+					R[Rt] = memory.read_word(imm8 + *SP);
+				}
+				// STR (immediate) - Store Register SP Relative
+				else {
+					uint8_t Rt = (opcode >> 8) & 0b111;
+					uint8_t imm8 = opcode & 0xFF;
+					memory.write_word(imm8 + *SP, R[Rt]);
+				}
+				break;
+		}
+	}
+	// ADR (Generate PC-Relative Address)
+	else if ((opcode >> 11) == 0b10100) {
+		uint8_t Rd = (opcode >> 8) & 0b111;
+		uint8_t imm8 = opcode & 0xFF;
+		R[Rd] = *PC + imm8;
+	}
+	// ADD (SP Plus Immediate)
+	else if ((opcode >> 11) == 0b10101) {
+	}
+	else if (opcode >> 12 == 0b1011) {
+		switch ((opcode >> 6) & 0b111111) {
+			// ADD (SP plus immediate) - Add immediate to SP
+			case 0b000000 ... 0b000001:
+				break;
+			// SUB (SP minus immediate) - Subtract Immediate from SP
+			case 0b000010 ... 0b000011:
+				break;
+			// SXTH - Signed Extend Halfword
+			case 0b001000:
+				break;
+			// SXTB - Signed Extend Byte
+			case 0b001001:
+				break;
+			// UXTH - Unsigned Extend Halfword
+			case 0b001010:
+				break;
+			// UXTB - Unsigned Extend Byte
+			case 0b001011:
+				break;
+			// PUSH - Push Multiple Registers
+			case 0b010000 ... 0b010111:
+				break;
+			// CPS - Change Processor State
+			case 0b011001:
+				break;
+			// REV - Byte-Reverse Word
+			case 0b101000:
+				break;
+			// REV16 - Byte-Reverse Packed Halfword
+			case 0b101001:
+				break;
+			// REVSH - Byte-Reverse Signed Halfword
+			case 0b101011:
+				break;
+			// POP - Pop Multiple Registers
+			case 0b110000 ... 0b110111:
+				break;
+			// BKPT - Breakpoint
+			case 0b111000 ... 0b111011:
+				break;
+			// Hints
+			case 0b111100 ... 0b111111:
+				break;
 		}
 	}
 }
