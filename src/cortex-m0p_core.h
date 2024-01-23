@@ -19,10 +19,13 @@ class CM0P_Core {
 		uint32_t*		LR = &R[14];
 		uint32_t*		PC = &R[15];
 
+		uint32_t		stack[40];
+
 		CM0P_Memory memory;
 
 		uint32_t update_flag_addition(uint32_t a, uint32_t b);
 		uint32_t update_flag_subtraction(uint32_t a, uint32_t b);
+		void stackPush(uint32_t data);
 	public:
 		CM0P_Core();			// Constructor
 		bool get_flag(char flag);

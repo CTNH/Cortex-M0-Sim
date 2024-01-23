@@ -27,6 +27,20 @@ uint32_t CM0P_Core::update_flag_subtraction(uint32_t a, uint32_t b) {
 	return result;
 }
 
+bool CM0P_Core:: get_flag(char flag) {
+	switch (flag) {
+		case 'N':
+			break;
+		case 'Z':
+			break;
+		case 'C':
+			break;
+		case 'V':
+			break;
+	}
+	return 1;
+}
+
 void CM0P_Core::update_flag(char flag, bool bit) {
 	switch(flag) {
 		// Negative Flag
@@ -621,6 +635,10 @@ void CM0P_Core::step_inst() {
 		// ADD (SP Plus Immediate)
 		case 0b101010 ... 0b101011:
 			{
+				uint8_t Rd = (opcode >> 8) & 0b111;
+				uint8_t imm8 = opcode & 0xFF;
+
+				R[Rd] = *SP + imm8;
 			}
 			break;
 
@@ -629,39 +647,124 @@ void CM0P_Core::step_inst() {
 			switch ((opcode >> 6) & 0b111111) {
 				// ADD (SP plus immediate) - Add immediate to SP
 				case 0b000000 ... 0b000001:
+					{
+						uint8_t imm7 = opcode & 0b1111111;
+						*SP += imm7;
+					}
 					break;
 				// SUB (SP minus immediate) - Subtract Immediate from SP
 				case 0b000010 ... 0b000011:
+					{
+						uint8_t imm7 = opcode & 0b1111111;
+						*SP -= imm7;
+					}
 					break;
 				// SXTH - Signed Extend Halfword
 				case 0b001000:
+					{
+						uint8_t Rm = (opcode >> 3) & 0b111;
+						uint8_t Rd = opcode & 0b111;
+						uint32_t data = memory.read_halfword(R[Rm]);
+						if (data & 0x8000)
+							data |= 0xFFFF0000;
+						else
+							// Take lower 16-bits only
+							data &= 0xFFFF;
+						R[Rd] = data;
+					}
 					break;
 				// SXTB - Signed Extend Byte
 				case 0b001001:
+					{
+						uint8_t Rm = (opcode >> 3) & 0b111;
+						uint8_t Rd = opcode & 0b111;
+						uint32_t data = memory.read_byte(R[Rm]);
+						if (data & 0x80)
+							data |= 0xFFFFFF00;
+						else
+							// Take lower 8-bits only
+							data &= 0xFF;
+						R[Rd] = data;
+					}
 					break;
 				// UXTH - Unsigned Extend Halfword
 				case 0b001010:
+					{
+						uint8_t Rm = (opcode >> 3) & 0b111;
+						uint8_t Rd = opcode & 0b111;
+						// Take lower 16-bits only
+						R[Rd] = R[Rm] & 0xFFFF;
+					}
 					break;
 				// UXTB - Unsigned Extend Byte
 				case 0b001011:
+					{
+						uint8_t Rm = (opcode >> 3) & 0b111;
+						uint8_t Rd = opcode & 0b111;
+						// Take lower 8-bits only
+						R[Rd] = opcode & 0xFF;
+					}
 					break;
 				// PUSH - Push Multiple Registers
 				case 0b010000 ... 0b010111:
+					{
+						uint8_t register_list = opcode & 0xFF;
+						for (int i=0; i<8; i++) {
+							// Check if bit is set
+							if (register_list >> i & 1) {
+								stackPush(R[i+1]);
+								// TODO
+							}
+						}
+					}
 					break;
 				// CPS - Change Processor State
 				case 0b011001:
 					break;
 				// REV - Byte-Reverse Word
 				case 0b101000:
+					{
+						uint8_t Rm = (opcode >> 3) & 0b111;
+						uint8_t Rd = opcode & 0b111;
+						R[Rd] = 
+							// Swap first and last byte
+							(R[Rm] >> 24) | ((R[Rm] & 0xFF) << 24) |
+							// Swap middle bytes
+							(((R[Rm] >> 8) & 0xFF) << 16) | (((R[Rm] >> 16) & 0xFF) << 8);
+					}
 					break;
 				// REV16 - Byte-Reverse Packed Halfword
 				case 0b101001:
+					{
+						uint8_t Rm = (opcode >> 3) & 0b111;
+						uint8_t Rd = opcode & 0b111;
+						R[Rd] = 
+							// Swap lower bytes
+							((R[Rm] >> 8) & 0xFF) | ((R[Rm] & 0xFF) << 8) |
+							// Swap higher bytes
+							(((R[Rm]>>16) & 0xFF) << 24) | (((R[Rm]>>24) & 0xFF) << 16);
+					}
 					break;
 				// REVSH - Byte-Reverse Signed Halfword
 				case 0b101011:
+					{
+						uint8_t Rm = (opcode >> 3) & 0b111;
+						uint8_t Rd = opcode & 0b111;
+						R[Rd] = ((R[Rm] & 0xFF) << 8) | ((R[Rm] >> 8) & 0xFF);
+						// If 15th bit is set
+						if (R[Rd] & 0x8000)
+							R[Rd] |= 0xFFFF0000;
+					}
 					break;
 				// POP - Pop Multiple Registers
 				case 0b110000 ... 0b110111:
+					{
+						if (opcode & 1) {
+							// TODO Hardfault exception
+						}
+						uint8_t register_list = opcode & 0xFF;
+						uint8_t P = (opcode >> 8) & 1;
+					}
 					break;
 				// BKPT - Breakpoint
 				case 0b111000 ... 0b111011:
@@ -672,16 +775,153 @@ void CM0P_Core::step_inst() {
 			}
 			break;
 		
-		// Store multiple registers
+		// STM - Store multiple registers
 		case 0b110000 ... 0b110001:
+			{
+				uint8_t Rn = (opcode >> 8) & 0b111;
+				uint8_t register_list = opcode & 0xFF;
+				uint8_t address = R[Rn];
+				for (int i=7; i>-1; i--) {
+					if ((register_list >> i) & 1) {
+						memory.write_word(address, R[8-i]);
+						address += 4;
+					}
+				}
+				// If Rn is unset
+				if (~((register_list >> Rn) & 1)) {
+					// Write back address
+					R[Rn] = address;
+				}
+			}
 			break;
 
-		// Load multiple registers
+		// LDM - Load multiple registers
 		case 0b110010 ... 0b110011:
+			{
+				uint8_t Rn = (opcode >> 8) & 0b111;
+				uint8_t register_list = opcode & 0xFF;
+				uint8_t address = R[Rn];
+				for (int i=7; i>-1; i--) {
+					if ((register_list >> i) & 1) {
+						R[8-i] = memory.read_word(address);
+						address += 4;
+					}
+				}
+				// If Rn is unset
+				if (~((register_list >> Rn) & 1)) {
+					// Write back address
+					R[Rn] = address;
+				}
+			}
 			break;
 
 		// Conditional branch, and Supervisor Call
 		case 0b110100 ... 0b110111:
+			{
+				switch ((opcode >> 8) & 0xF) {
+					// UDF - Permanently Undefined
+					case 1110:
+						{
+							// TODO
+						}
+						break;
+					// SVC - Supervisor Call
+					case 1111:
+						{
+							uint8_t imm8 = opcode & 0xFF;
+							// TODO
+						}
+						break;
+					// B - Conditional Branch - A6.7.10
+					default:
+						{
+							uint8_t cond = (opcode >> 8) & 0xF;
+							uint8_t imm8 = opcode & 0xFF;
+							bool signedBit = imm8 >> 7;
+							imm8 <<= 1;
+							bool condMet = 0;
+							// ARMv6-M Reference Manual A6.3
+							switch (cond) {
+								// EQ - Equal
+								case 0b0000:
+									{
+										if (get_flag('Z'))
+											condMet = 1;
+									}
+									break;
+								// NE - Not Equal
+								case 0b0001:
+									{
+										if (~get_flag('Z'))
+											condMet = 1;
+									}
+									break;
+								// CS - Carry Set
+								case 0b0010:
+									{
+										if (get_flag('C'))
+											condMet = 1;
+									}
+									break;
+								// CC - Carry Clear
+								case 0b0011:
+									{
+										if (~get_flag('C'))
+											condMet = 1;
+									}
+									break;
+								// MI - Minus, Negative
+								case 0b0100:
+									{
+										if (get_flag('N'))
+											condMet = 1;
+									}
+									break;
+								// PL - Plus, Positive or Zero
+								case 0b0101:
+										if (~get_flag('N'))
+											condMet = 1;
+									break;
+								// VS - Overflow
+								case 0b0110:
+									{
+										if (get_flag('V'))
+											condMet = 1;
+									}
+									break;
+								// VC - No Overflow
+								case 0b0111:
+									{
+										if (~get_flag('V'))
+											condMet = 1;
+									}
+									break;
+								// HI - Unsigned Higher
+								case 0b1000:
+									break;
+								// LS - Unsigned Lower or Same
+								case 0b1001:
+									break;
+								// GE - Signed Greater Than or Equal
+								case 0b1010:
+									break;
+								// LT - Signed Less Than
+								case 0b1011:
+									break;
+								// GT - Signed Greater Than
+								case 0b1100:
+									break;
+								// LE - Signed Less Than or Equal
+								case 0b1101:
+									break;
+								// None (AL) - Always (Unconditional)
+								case 0b1110:
+									break;
+							}
+						}
+						break;
+				}
+			}
 			break;
 
 		// Unconditional Branch
