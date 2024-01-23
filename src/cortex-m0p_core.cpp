@@ -837,8 +837,6 @@ void CM0P_Core::step_inst() {
 						{
 							uint8_t cond = (opcode >> 8) & 0xF;
 							uint8_t imm8 = opcode & 0xFF;
-							bool signedBit = imm8 >> 7;
-							imm8 <<= 1;
 							bool condMet = 0;
 							// ARMv6-M Reference Manual A6.3
 							switch (cond) {
@@ -898,25 +896,56 @@ void CM0P_Core::step_inst() {
 									break;
 								// HI - Unsigned Higher
 								case 0b1000:
+									{
+										if(get_flag('C') && ~get_flag('Z'))
+											condMet = 1;
+									}
 									break;
 								// LS - Unsigned Lower or Same
 								case 0b1001:
+									{
+										if(~get_flag('C') && get_flag('Z'))
+											condMet = 1;
+									}
 									break;
 								// GE - Signed Greater Than or Equal
 								case 0b1010:
+									{
+										if(get_flag('N') == get_flag('V'))
+											condMet = 1;
+									}
 									break;
 								// LT - Signed Less Than
 								case 0b1011:
+									{
+										if(get_flag('N') != get_flag('V'))
+											condMet = 1;
+									}
 									break;
 								// GT - Signed Greater Than
 								case 0b1100:
+									{
+										if(~get_flag('Z') && (get_flag('N') == get_flag('V')))
+											condMet = 1;
+									}
 									break;
 								// LE - Signed Less Than or Equal
 								case 0b1101:
+									{
+										if(get_flag('Z') || (get_flag('N') != get_flag('V')))
+											condMet = 1;
+									}
 									break;
 								// None (AL) - Always (Unconditional)
 								case 0b1110:
+									{
+										condMet = 1;
+									}
 									break;
+							}
+							if (condMet) {
+								// TODO: Check if imm8 is unsigned or not
+								PC += imm8 * 2 - 256;	// Keep number between -256 and 254
 							}
 						}
 						break;
@@ -926,6 +955,11 @@ void CM0P_Core::step_inst() {
 
 		// Unconditional Branch
 		case 0b111000 ... 0b111001:
+			{
+				uint16_t imm11 = opcode & 0x7FF;
+				// TODO: Check if imm8 is unsigned or not
+				PC += imm11 * 2 - 2048;
+			}
 			break;
 	}
 }
