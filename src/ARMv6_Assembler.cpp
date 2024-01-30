@@ -149,6 +149,11 @@ void ARMv6_Assembler::log(string msg, int msgLvl) {
 }
 
 uint16_t ARMv6_Assembler::genOpcode(string instruction) {
+	// Remove comments
+	if (instruction.find(";") != -1) {
+		instruction.erase(instruction.find(";"));
+	}
+
 	// Separate instruction into arguments list by ' ' or ','
 	char** args = strtokSplit(&instruction[0], (char*)" ,");
 	int argLen = strArrLen(args);
@@ -380,15 +385,116 @@ uint16_t ARMv6_Assembler::genOpcode(string instruction) {
 		case 0xd5cb:		// BLX
 		case 0x731f:		// BX
 		case 0xda23:		// CMN
+			{
+				int Rn = getRegNum(args[1]);
+				int Rm = getRegNum(args[2]);
+
+				if (Rn < 0 or Rn > 7 or Rm < 0 or Rm > 7) {
+					log("Invalid register: Rn and Rm must be between R0 and R7!", 1);
+					return 0;
+				}
+
+				opcode |= Rn;
+				opcode |= Rm;
+				opcode |= 0b100001011 << 6;
+			}
+			break;
 		case 0xda25:		// CMP
+			{
+				int Rn = getRegNum(args[1]);
+				if (Rn < 0 or Rn > 14) {
+					log("Invalid register: Rn must be between R0 and R14!", 1);
+					return 0;
+				}
+
+				// Immediate
+				if (args[2][0] == '#') {
+					int imm = strtol(args[2]+1, NULL, 0);
+					if (imm < 0 or imm > 255) {
+						log("Invalid immediate value: must be between 0 and 255!", 1);
+						return 0;
+					}
+
+					opcode |= imm;
+					opcode |= Rn << 8;
+					opcode |= 0b101 >> 11;
+				}
+				// Register
+				else {
+					int Rm = getRegNum(args[2]);
+					if (Rm < 0 or Rm > 14) {
+						log("Invalid register: Rm must be between R0 and R14!", 1);
+						return 0;
+					}
+
+					// Encoding T1 - Rn and Rm both from R0-R7
+					if (Rn < 8 and Rm < 8) {
+						opcode |= Rn;
+						opcode |= Rm << 3;
+						opcode |= 0b100001010;
+					}
+					else {
+						opcode |= Rn;
+						opcode |= Rm << 3;
+						opcode |= (Rn >> 3) << 7;	// N bit
+						opcode |= 0b1000101 << 8;
+					}
+				}
+			}
+			break;
 		case 0xb2f8:		// CPSID
+			{
+				opcode |= 0b1011011001110010;
+			}
+			break;
 		case 0xb2f9:		// CPSIE
+			{
+				opcode |= 0b1011011001100010;
+			}
+			break;
 		case 0xde58:		// DMB
+			{
+				// TODO: 32-bit instruction
+			}
+			break;
 		case 0xdf1e:		// DSB
+			{
+				// TODO: 32-bit instruction
+			}
+			break;
 		case 0x409e:		// EORS
+			{
+				int Rd = getRegNum(args[1]);
+				int Rn = getRegNum(args[argLen-2]);
+				int Rm = getRegNum(args[argLen-1]);
+				if (Rd != Rn) {
+					log("Invalid registers: Rd and Rn must be the same!", 1);
+					return 0;
+				}
+				if (Rd < 0 or Rd > 7 or Rm < 0 or Rm > 7) {
+					log("Invalid registers: all registers must be between R0 and R7!", 1);
+					return 0;
+				}
+
+				opcode |= Rd;
+				opcode |= Rm << 3;
+				opcode |= 0b100000001 << 6;
+				log("EORS "s + args[1] + ","s + args[argLen-1], 3);
+			}
+			break;
 		case 0xf463:		// ISB
+			{
+				// TODO: 32-bit instruction
+			}
+			break;
 		case 0xff42:		// LDM
+			{
+			}
+			break;
 		case 0xff47:		// LDR
+			{
+			}
+			break;
 		case 0xe869:		// LDRB
 		case 0xe86f:		// LDRH
 		case 0xf7fc:		// LDRSB
