@@ -227,3 +227,12 @@ int strtoint(char* str) {
 	return (int)strtol(str, NULL, 0);
 }
 
+// Find length of null terminated string array
+int strArrLen(char **strArr) {
+	int length = 0;
+	while (strArr[length][0] != -1) {
+		length++;
+	}
+	return length;
+}
+

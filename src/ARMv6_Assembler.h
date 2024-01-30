@@ -2,6 +2,7 @@
 #define ARMV6_ASSEMBLER_H
 #include <string>		// For type string
 #include <cstdint>		// For type uint16_t
+#include <vector>
 using namespace std;
 
 extern "C" {
@@ -10,12 +11,35 @@ extern "C" {
 
 class ARMv6_Assembler {
 	private:
+		struct OpcodeResult {
+			bool invalid;
+			uint32_t opcode;
+		};
+
+		// Log level; smaller the number the less to print
 		int logLvl = 1;
+
+		uint16_t currAddress;
+		vector<string> labels;
+
 		// Creates hash from text using the djb2 algorithm
 		uint16_t djb2Hash(string text);
+		// Gets an integer given a string presentation of a register
 		int getRegNum(char* reg);
+
 		// Log function to process logs
 		void log(string msg, int msgLvl);
+		void logInvalidValue(string type, int min, int max);
+		// Log of 16-bits opcodes generated
+		void log16bitOpcode(string instruction, uint16_t opcode);
+
+		// Functions for genOpcode() to avoid code duplication
+		// For ASRS, LSLS, LSRS
+		OpcodeResult genOpcode_bitShift(char** args, uint8_t opcodeImmPrefix, uint8_t opcodeRegPrefix);
+		// For ANDS, ORRS, EORS, BICS
+		OpcodeResult genOpcode_bitwise(char** args, uint8_t opcodePrefix);
+		// For REV, REV16, REVSH
+		OpcodeResult genOpcode_reverseBytes(char** args, uint8_t opcodePrefix);
 	public:
 		// Class Constructor
 		ARMv6_Assembler();
