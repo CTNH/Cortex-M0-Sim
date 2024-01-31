@@ -334,10 +334,10 @@ uint16_t ARMv6_Assembler::genOpcode(string instruction) {
 			}
 			break;
 		case 0x090b:		// ANDS
-			genOpcode_bitwise(args, 0b0000);
+			result = genOpcode_bitwise(args, 0b0000);
 			break;
 		case 0x201e:		// ASRS
-			genOpcode_bitShift(args, 0b10, 0b0100);
+			result = genOpcode_bitShift(args, 0b10, 0b0100);
 			break;
 		case 0xb5e7:		// B
 			{
@@ -361,7 +361,7 @@ uint16_t ARMv6_Assembler::genOpcode(string instruction) {
 		case 0xd5b8:		// BLE
 		case 0xd454:		// BAL
 		case 0x8006:		// BICS
-			genOpcode_bitwise(args, 0b1110);
+			result = genOpcode_bitwise(args, 0b1110);
 			break;
 		case 0x8a36:		// BKPT
 		case 0x7313:		// BL
@@ -450,7 +450,7 @@ uint16_t ARMv6_Assembler::genOpcode(string instruction) {
 			}
 			break;
 		case 0x409e:		// EORS
-			genOpcode_bitwise(args, 0b0001);
+			result = genOpcode_bitwise(args, 0b0001);
 			break;
 		case 0xf463:		// ISB
 			{
@@ -479,10 +479,10 @@ uint16_t ARMv6_Assembler::genOpcode(string instruction) {
 		case 0xf7fc:		// LDRSB
 		case 0xf802:		// LDRSH
 		case 0x2783:		// LSLS
-			genOpcode_bitShift(args, 0b00, 0b0010);
+			result = genOpcode_bitShift(args, 0b00, 0b0010);
 			break;
 		case 0x2849:		// LSRS
-			genOpcode_bitShift(args, 0b01, 0b0011);
+			result = genOpcode_bitShift(args, 0b01, 0b0011);
 			break;
 		case 0x04f7:		// MOV
 			{
@@ -588,7 +588,7 @@ uint16_t ARMv6_Assembler::genOpcode(string instruction) {
 			}
 			break;
 		case 0xc92b:		// ORRS
-			genOpcode_bitwise(args, 0b1100);
+			result = genOpcode_bitwise(args, 0b1100);
 			break;
 		case 0x11b4:		// POP
 			{}
@@ -597,13 +597,13 @@ uint16_t ARMv6_Assembler::genOpcode(string instruction) {
 			{}
 			break;
 		case 0x18f2:		// REV
-			result = genOpcode_reverseBytes(args, 0b1011101000);
+			result = genOpcode_reverseBytes(args, 0b00);
 			break;
 		case 0x23f9:		// REV16
-			result = genOpcode_reverseBytes(args, 0b1011101001);
+			result = genOpcode_reverseBytes(args, 0b01);
 			break;
 		case 0x286d:		// REVSH
-			result = genOpcode_reverseBytes(args, 0b1011101011);
+			result = genOpcode_reverseBytes(args, 0b11);
 			break;
 		case 0x618b:		// RORS
 			{
@@ -640,13 +640,49 @@ uint16_t ARMv6_Assembler::genOpcode(string instruction) {
 		case 0x1f2f:		// SUB
 		case 0x0562:		// SUBS
 		case 0x1f51:		// SVC
+			{
+				int imm = strtol(args[1]+1, NULL, 0);
+				if (imm < 0 or imm > 255) {
+					log("Invalid immediate value: must be between 0 and 255", 1);
+					break;
+				}
+
+				opcode |= imm;
+				opcode |= 0b11011111 << 8;
+			}
+			break;
 		case 0x1466:		// SXTB
+			result = genOpcode_extendRegister(args, 0b01);
+			break;
 		case 0x146c:		// SXTH
+			result = genOpcode_extendRegister(args, 0b00);
+			break;
 		case 0x2340:		// TST
+			{
+				int Rn = getRegNum(args[1]);
+				int Rm = getRegNum(args[1]);
+				if (Rn < 0 or Rn > 7 or Rm < 0 or Rm > 7) {
+					log("Invalid registers: Rd and Rm must be between R0 and R7!", 1);
+					invalidInstruction = 1;
+					break;
+				}
+
+				opcode |= Rn;
+				opcode |= Rm << 3;
+				opcode |= 0b0100001000 << 6;
+			}
+			break;
 		case 0x2d28:		// UXTB
+			result = genOpcode_extendRegister(args, 0b11);
+			break;
 		case 0x2d2e:		// UXTH
+			result = genOpcode_extendRegister(args, 0b10);
+			break;
 		case 0x2e47:		// WFE
+			opcode |= 0b1011111100100000;
+			break;
 		case 0x2e4b:		// WFI
+			opcode |= 0b1011111100110000;
 			break;
 
 		invalid:
@@ -757,10 +793,38 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode_reverseBytes(char** arg
 		return result;
 	}
 
+	// REV    1011 1010 00 Rm Rd
+	// REV16  1011 1010 01 Rm Rd
+	// REVSH  1011 1010 11 Rm Rd
 	result.opcode |= Rd;
 	result.opcode |= Rm << 3;
 	result.opcode |= opcodePrefix << 6;
+	result.opcode |= 0b10111010 << 8;
 	
+	return result;
+}
+
+
+ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode_extendRegister(char** args, uint8_t opcodePrefix) {
+	OpcodeResult result;
+
+	int Rd = getRegNum(args[1]);
+	int Rm = getRegNum(args[2]);
+	if (Rd < 0 or Rd > 7 or Rm < 0 or Rm > 7) {
+		log("Invalid registers: Rd and Rm must be between R0 and R7!", 1);
+		result.invalid = 1;
+		return result;
+	}
+
+	// SXTB  1011 0010 01 Rm Rd
+	// SXTH  1011 0010 00 Rm Rd
+	// UXTB  1011 0010 11 Rm Rd
+	// UXTH  1011 0010 10 Rm Rd
+	result.opcode |= Rd;
+	result.opcode |= Rm << 3;
+	result.opcode |= opcodePrefix << 6;
+	result.opcode |= 0b10110010 << 8;
+
 	return result;
 }
 
