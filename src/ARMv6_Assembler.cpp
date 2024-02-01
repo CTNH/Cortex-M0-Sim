@@ -5,6 +5,7 @@
 #include <ctype.h>			// For toupper() / tolower()
 #include <bits/stdc++.h>	// For sort()
 #include <iterator>
+#include <string>
 // C library
 extern "C" {
 	#include "basiclib_string.h"
@@ -472,12 +473,156 @@ uint16_t ARMv6_Assembler::genOpcode(string instruction) {
 			break;
 		case 0xff47:		// LDR
 			{
+				// LDR Rt, [<Rn | SP> {, #imm}]		// Immediate
+				// 		LDR R0, [R1
+				// 		LDR R0, [R1,#100]
+				// 		LDR R0, [SP,#100]
+				// LDR Rt, [Rn , Rm]				// Register
+				// 		LDR R0, [R1, R2]
+				// LDR Rt, <label | [PC, #imm]>		// Literal
+				// 		LDR R0, LabelX
+				// 		LDR R0, [PC,#100]
+				int Rt = getRegNum(args[1]);
+				if (Rt < 0 or Rt > 7) {
+					log("Invalid register: Rt must be between R0 and R7!", 1);
+					invalidInstruction = 1;
+					break;
+				}
+
+				enum instType {
+					imm,	// Immediate Offset
+					reg,	// Register Offset
+					ltr		// Literal
+				};
+				instType itype;
+				// Determines if instruction is using immediate offset, register offset or literal
+				if (argLen < 4) {
+					if (args[2][0] == '[')
+						itype = imm;
+					else
+						itype = ltr;
+				}
+				else {
+					if (args[3][0] == '#') {
+						// Rn is PC
+						if (getRegNum(args[2]+1) == 15)
+							itype = ltr;
+						else
+							itype = imm;
+					}
+					else
+						itype = reg;
+				}
+
+				// TODO: remove ']' from last arg if exist
+				switch (itype) {
+					case imm:
+						{
+							/*
+							int Rn = getRegNum(args[2]+1);
+							if ((Rn < 0 or Rn > 7) and Rn != 13) {
+								log("Invalid register: Rn must be between R0 and R7 or SP!", 1);
+								invalidInstruction = 1;
+								break;
+							}
+
+							int imm = 0;
+							// Only change immediate value if argument exists
+							if (argLen > 3) {
+								imm = strtol(args[3]+1, NULL, 0);
+								// Assume R0-R7 as base; use 124 as upper limit
+								int uplim = 124;
+								// SP as base
+								if (Rn == 13)
+									uplim = 1020;
+
+								if (imm < 0 or imm > uplim) {
+									log("Invalid immediate value: must be between 0 and "s + to_string(uplim) + "!", 1);
+									invalidInstruction = 1;
+									break;
+								}
+							}
+							else {
+								log("Immediate offset not provided, setting to 0.", 3);
+							}
+
+							// Encoding T1
+							if (Rn != 13) {
+								// LDR  011 0 1 imm5 Rn Rt
+								opcode |= Rt;
+								opcode |= Rn << 3;
+								opcode |= imm << 6;
+								opcode |= 0b01101 << 11;
+							}
+							// Encoding T2
+							else {
+								// LDR  1001 1 Rt imm8
+								opcode |= imm;
+								opcode |= Rt << 8;
+								opcode |= 0b10011 << 11;
+							}
+						*/
+							result = genOpcode_loadStoreImm(args, 0b01101);
+						}
+						break;
+					case reg:
+						/*
+						{
+							int Rn = getRegNum(args[2]+1);
+							int Rm = getRegNum(args[3]);
+							if (Rn < 0 or Rn > 7 or Rm < 0 or Rm > 7) {
+								log("Invalid register: all registers must be between R0 and R7!", 1);
+								invalidInstruction = 1;
+								break;
+							}
+
+							// LDR  0101 100 Rm Rn Rt
+							opcode |= Rt;
+							opcode |= Rn << 3;
+							opcode |= Rm << 6;
+							opcode |= 0b0101100;
+						}
+						*/
+						result = genOpcode_loadStoreReg(args, 0b100);
+						break;
+					case ltr:
+						{
+							// TODO: labels
+						}
+						break;
+				}
 			}
 			break;
 		case 0xe869:		// LDRB
+			{
+				// Immediate
+				if (argLen < 4 or args[3][0] == '#')
+					result = genOpcode_loadStoreImm(args, 0b01111);
+				// Register
+				else
+					result = genOpcode_loadStoreReg(args, 0b110);
+			}
+			break;
 		case 0xe86f:		// LDRH
+			{
+				// Immediate
+				if (argLen < 4 or args[3][0] == '#')
+					result = genOpcode_loadStoreImm(args, 0b10001);
+				// Register
+				else
+					result = genOpcode_loadStoreReg(args, 0b101);
+			}
+			break;
 		case 0xf7fc:		// LDRSB
+			{
+				result = genOpcode_loadStoreReg(args, 0b011);
+			}
+			break;
 		case 0xf802:		// LDRSH
+			{
+				result = genOpcode_loadStoreReg(args, 0b111);
+			}
+			break;
 		case 0x2783:		// LSLS
 			result = genOpcode_bitShift(args, 0b00, 0b0010);
 			break;
@@ -635,8 +780,35 @@ uint16_t ARMv6_Assembler::genOpcode(string instruction) {
 		case 0x1d33:		// SEV
 		case 0x1f19:		// STM
 		case 0x1f1e:		// STR
+			{
+				// Immediate
+				if (argLen < 4 or args[3][0] == '#')
+					result = genOpcode_loadStoreImm(args, 0b01100);
+				// Register
+				else
+					result = genOpcode_loadStoreReg(args, 0b000);
+			}
+			break;
 		case 0x0320:		// STRB
+			{
+				// Immediate
+				if (argLen < 4 or args[3][0] == '#')
+					result = genOpcode_loadStoreImm(args, 0b01110);
+				// Register
+				else
+					result = genOpcode_loadStoreReg(args, 0b010);
+			}
+			break;
 		case 0x0326:		// STRH
+			{
+				// Immediate
+				if (argLen < 4 or args[3][0] == '#')
+					result = genOpcode_loadStoreImm(args, 0b10000);
+				// Register
+				else
+					result = genOpcode_loadStoreReg(args, 0b001);
+			}
+			break;
 		case 0x1f2f:		// SUB
 		case 0x0562:		// SUBS
 		case 0x1f51:		// SVC
@@ -801,6 +973,126 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode_reverseBytes(char** arg
 	result.opcode |= opcodePrefix << 6;
 	result.opcode |= 0b10111010 << 8;
 	
+	return result;
+}
+
+
+ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode_loadStoreImm(char** args, uint8_t opcodePrefix) {
+	OpcodeResult result;
+
+	int Rt = getRegNum(args[1]);
+	int Rn = getRegNum(args[2]+1);
+	// Instructin is either LDR or STR
+	bool possibleSP = strcmp(args[0], "LDR") == 0 or strcmp(args[0], "STR") == 0;
+	if (
+			// Either Rt or Rn is not in 0-7
+			Rt < 0 or Rt > 7 or Rn < 0 or Rn > 7 or
+			// Rn is SP and instruction is not LDR or STR
+			(Rn == 13 and possibleSP == 0)
+		) {
+		if (possibleSP)
+			log("Invalid register: Rt and Rn must be between R0 and R7 or SP!", 1);
+		else
+			log("Invalid register: Rt and Rn must be between R0 and R7!", 1);
+		result.invalid = 1;
+		return result;
+	}
+
+	// Calculate immediate value
+	int imm = 0;
+	// Only change immediate value if argument exists
+	if (strArrLen(args) > 3) {
+		imm = strtol(args[3]+1, NULL, 0);
+		int uplim = 0;
+		int mul = 0;	// Immediate must be multiples of n
+		switch (djb2Hash(args[0])) {
+			case 0xff47:	// LDR
+			case 0x1f1e:	// STR
+				{
+					// Assume R0-R7 as base; use 124 as upper limit
+					uplim = 124;
+					// SP as base
+					if (Rn == 13)
+						uplim = 1020;
+					mul = 4;
+				}
+				break;
+			case 0xe869:	// LDRB
+			case 0x0320:	// STRB
+				uplim = 31;
+				break;
+			case 0xe86f:	// LDRH
+			case 0x0326:	// STRH
+				uplim = 62;
+				mul = 2;
+				break;
+		}
+
+		if (imm < 0 or imm > uplim or imm % mul != 0) {
+			log("Invalid immediate value: must be between 0 and "s + to_string(uplim) + ", also must be a multiple of "s + to_string(mul) + "!", 1);
+			result.invalid = 1;
+			return result;
+		}
+	}
+	else {
+		log("Immediate offset not provided, setting to 0.", 3);
+	}
+
+	// LDR   011 0 1 imm5 Rn Rt
+	// LDRB  011 1 1 imm5 Rn Rt
+	// STR   011 0 0 imm5 Rn Rt
+	// STRB  011 1 0 imm5 Rn Rt
+	// LDRH  1000 1 imm5 Rn Rt
+	// STRH  1000 0 imm5 Rn Rt
+
+	// Encoding T1
+	if (Rn != 13) {
+		// LDR  011 0 1 imm5 Rn Rt
+		result.opcode |= Rt;
+		result.opcode |= Rn << 3;
+		result.opcode |= imm << 6;
+		result.opcode |= opcodePrefix << 11;
+	}
+	// Encoding T2 (SP)
+	else {
+		// LDR  1001 1 Rt imm8
+		// STR	1001 0 Rt imm8
+		result.opcode |= imm;
+		result.opcode |= Rt << 8;
+		result.opcode |= (opcodePrefix & 1) << 11;
+		result.opcode |= 0b1001 << 12;
+	}
+
+	return result;
+}
+
+
+ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode_loadStoreReg(char** args, uint8_t opcodePrefix) {
+	OpcodeResult result;
+	
+	int Rt = getRegNum(args[1]);
+	int Rn = getRegNum(args[2]+1);
+	int Rm = getRegNum(args[3]);
+	if (Rt < 0 or Rt > 7 or Rn < 0 or Rn > 7 or Rm < 0 or Rm > 7) {
+		log("Invalid register: all registers must be between R0 and R7!", 1);
+		result.invalid = 1;
+		return result;
+	}
+
+	// LDR     0101 100 Rm Rn Rt
+	// LDRB    0101 110 Rm Rn Rt
+	// LDRH    0101 101 Rm Rn Rt
+	// LDRSB   0101 011 Rm Rn Rt
+	// LDRSH   0101 111 Rm Rn Rt
+	// STR     0101 000 Rm Rn Rt
+	// STRB    0101 010 Rm Rn Rt
+	// STRH    0101 001 Rm Rn Rt
+	result.opcode |= Rt;
+	result.opcode |= Rn << 3;
+	result.opcode |= Rm << 6;
+	result.opcode |= opcodePrefix << 9;
+	result.opcode |= 0b0101 << 12;
+
 	return result;
 }
 

@@ -33,13 +33,20 @@ class ARMv6_Assembler {
 		// Log of 16-bits opcodes generated
 		void log16bitOpcode(string instruction, uint16_t opcode);
 
-		// Functions for genOpcode() to avoid code duplication
+		// ==== Functions for genOpcode() to avoid code duplication
 		// For ASRS, LSLS, LSRS
 		OpcodeResult genOpcode_bitShift(char** args, uint8_t opcodeImmPrefix, uint8_t opcodeRegPrefix);
 		// For ANDS, ORRS, EORS, BICS
 		OpcodeResult genOpcode_bitwise(char** args, uint8_t opcodePrefix);
 		// For REV, REV16, REVSH
 		OpcodeResult genOpcode_reverseBytes(char** args, uint8_t opcodePrefix);
+		// For LDR{B|H}, STR{B|H}
+		OpcodeResult genOpcode_loadStoreImm(char** args, uint8_t opcodePrefix);
+		// For LDR{B|H|SB|SH}, STR{B|H}
+		OpcodeResult genOpcode_loadStoreReg(char** args, uint8_t opcodePrefix);
+		// For SXTB, SXTH, UXTB, UXTH
+		OpcodeResult genOpcode_extendRegister(char** args, uint8_t opcodePrefix);
+		// ====
 	public:
 		// Class Constructor
 		ARMv6_Assembler();
