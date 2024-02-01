@@ -26,6 +26,8 @@ class ARMv6_Assembler {
 		uint16_t djb2Hash(string text);
 		// Gets an integer given a string presentation of a register
 		int getRegNum(char* reg);
+		// Get an immediate offset given a string label; boolean is used to track if offset is valid
+		pair<bool, int> labelOffsetLookup(string label);
 
 		// Log function to process logs
 		void log(string msg, int msgLvl);
@@ -38,6 +40,8 @@ class ARMv6_Assembler {
 		OpcodeResult genOpcode_bitShift(char** args, uint8_t opcodeImmPrefix, uint8_t opcodeRegPrefix);
 		// For ANDS, ORRS, EORS, BICS
 		OpcodeResult genOpcode_bitwise(char** args, uint8_t opcodePrefix);
+		// For B{cond}
+		OpcodeResult genOpcode_branch(char** args, uint8_t opcodePrefix, bool t2=0);
 		// For REV, REV16, REVSH
 		OpcodeResult genOpcode_reverseBytes(char** args, uint8_t opcodePrefix);
 		// For LDR{B|H}, STR{B|H}

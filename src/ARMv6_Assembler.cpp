@@ -146,6 +146,21 @@ int ARMv6_Assembler::getRegNum(char* reg) {
 	}
 }
 
+pair<bool, int> ARMv6_Assembler::labelOffsetLookup(string label) {
+	// Boolean value -> if output is valid(1) or invalid(0)
+	// Integer -> immediate offset of label
+	pair<bool, int> out;
+
+	// Invalid
+	if (1) {
+		log("Invalid label: no label with name "s + label + "found!", 1);
+		out.first = false;
+		return out;
+	}
+
+	return out;
+}
+
 void ARMv6_Assembler::log(string msg, int msgLvl) {
 	if (msgLvl >= logLvl)
 		cout << msg << endl;
@@ -341,26 +356,55 @@ uint16_t ARMv6_Assembler::genOpcode(string instruction) {
 			result = genOpcode_bitShift(args, 0b10, 0b0100);
 			break;
 		case 0xb5e7:		// B
-			{
-			}
+			result = genOpcode_branch(args, 0, 1);
 			break;
 		case 0xd4dd:		// BEQ
+			result = genOpcode_branch(args, 0b0000);
+			break;
 		case 0xd5fa:		// BNE
+			result = genOpcode_branch(args, 0b0001);
+			break;
 		case 0xd49d:		// BCS
 		case 0xd542:		// BHS
+			result = genOpcode_branch(args, 0b0010);
+			break;
 		case 0xd48d:		// BCC
 		case 0xd5c2:		// BLO
+			result = genOpcode_branch(args, 0b0011);
+			break;
 		case 0xd5dd:		// BMI
+			result = genOpcode_branch(args, 0b0100);
+			break;
 		case 0xd643:		// BPL
+			result = genOpcode_branch(args, 0b0101);
+			break;
 		case 0xd710:		// BVS
+			result = genOpcode_branch(args, 0b0110);
+			break;
 		case 0xd700:		// BVC
+			result = genOpcode_branch(args, 0b0111);
+			break;
 		case 0xd538:		// BHI
+			result = genOpcode_branch(args, 0b1000);
+			break;
 		case 0xd5c6:		// BLS
+			result = genOpcode_branch(args, 0b1001);
+			break;
 		case 0xd513:		// BGE
+			result = genOpcode_branch(args, 0b1010);
+			break;
 		case 0xd5c7:		// BLT
+			result = genOpcode_branch(args, 0b1011);
+			break;
 		case 0xd522:		// BGT
+			result = genOpcode_branch(args, 0b1100);
+			break;
 		case 0xd5b8:		// BLE
+			result = genOpcode_branch(args, 0b1101);
+			break;
 		case 0xd454:		// BAL
+			result = genOpcode_branch(args, 0b1110);
+			break;
 		case 0x8006:		// BICS
 			result = genOpcode_bitwise(args, 0b1110);
 			break;
@@ -950,6 +994,59 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode_bitwise(char** args, ui
 	result.opcode |= opcodePrefix << 6;
 	result.opcode |= 0b10000 << 10;
 	// log("EORS "s + args[1] + ","s + args[argLen-1], 3);
+
+	return result;
+}
+
+
+ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode_branch(char** args, uint8_t opcodePrefix, bool t2) {
+	OpcodeResult result = {0, 0};
+
+	// Encoding T1
+	pair<bool, int> labelOffset = labelOffsetLookup(args[1]);
+	if (!labelOffset.first) {
+		result.invalid = 1;
+		return result;
+	}
+	int immOffset = labelOffset.second;
+
+	// Encoding T2
+	if (t2 and (immOffset < -2048 or immOffset > 2046 or immOffset % 2 != 0)) {
+		log("Invalid immediate offset: must be even number in between -2048 and 2046!", 1);
+		result.invalid = 1;
+		return result;
+	}
+	// Encoding T1
+	else if (immOffset < -256 or immOffset > 254 or immOffset % 2 != 0) {
+		log("Invalid immediate offset: must be even number in between -256 and 254!", 1);
+		result.invalid = 1;
+		return result;
+	}
+
+	// EQ 0b0000
+	// NE 0b0001
+	// CS 0b0010
+	// CC 0b0011
+	// MI 0b0100
+	// PL 0b0101
+	// VS 0b0110
+	// VC 0b0111
+	// HI 0b1000
+	// LS 0b1001
+	// GE 0b1010
+	// LT 0b1011
+	// GT 0b1100
+	// LE 0b1101
+	// AL 0b1110
+	result.opcode |= immOffset;
+	// Encoding T2
+	if (t2)
+		result.opcode |= 0b11100 << 11;
+	// Encoding T1
+	else {
+		result.opcode |= opcodePrefix << 8;
+		result.opcode |= 0b1101 << 12;
+	}
 
 	return result;
 }
