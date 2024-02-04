@@ -2,6 +2,7 @@
 #define ARMV6_ASSEMBLER_H
 #include <string>		// For type string
 #include <cstdint>		// For type uint16_t
+#include <unordered_map>
 #include <vector>
 using namespace std;
 
@@ -10,24 +11,39 @@ extern "C" {
 }
 
 class ARMv6_Assembler {
-	private:
+	public:
 		struct OpcodeResult {
 			bool invalid;
 			uint32_t opcode;
 		};
 
+	private:
+		const uint32_t INST_BASEADDR = 0;	// Set base address of an instruction
+
 		// Log level; smaller the number the less to print
 		int logLvl = 1;
 
 		uint16_t currAddress;
-		vector<string> labels;
+		// Program Counter
+		uint32_t PC;
+		// vector<string> labels;
+		unordered_map<string, uint32_t> labels;
+
+		// Reads all lines from an assembly file
+		vector<string> readASMFile(string fpath);
 
 		// Creates hash from text using the djb2 algorithm
 		uint16_t djb2Hash(string text);
 		// Gets an integer given a string presentation of a register
 		int getRegNum(char* reg);
+
+		// Refer to A4.2.1 in ARMv6-M Architecture Reference Manual for calculating PC value
+		// Adds a label to the list
+		void addLabel(string label);
 		// Get an immediate offset given a string label; boolean is used to track if offset is valid
 		pair<bool, int> labelOffsetLookup(string label);
+		// Clean up instructions to aid processing
+		vector<char**> cleanInstructions(vector<string> lines);
 
 		// Log function to process logs
 		void log(string msg, int msgLvl);
@@ -57,7 +73,8 @@ class ARMv6_Assembler {
 		// Checks if all hashes are unique
 		bool hashUniqueCheck();
 		// Generate an opcode given a string instruction
-		uint16_t genOpcode(string instruction);		
+		OpcodeResult genOpcode(char** args);		
+		//uint16_t genOpcode(string instruction);		
 };
 
 #endif

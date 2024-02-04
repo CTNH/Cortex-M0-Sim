@@ -6,13 +6,41 @@
 #include <bits/stdc++.h>	// For sort()
 #include <iterator>
 #include <string>
+#include <vector>
 // C library
 extern "C" {
 	#include "basiclib_string.h"
 }
 
 
-ARMv6_Assembler::ARMv6_Assembler() {}
+ARMv6_Assembler::ARMv6_Assembler() {
+	vector<char**> instArgs = cleanInstructions(readASMFile("test.m"));
+	for (int i=0; i<instArgs.size(); i++) {
+		genOpcode(instArgs.at(i));
+	}
+}
+
+vector<string> ARMv6_Assembler::readASMFile(string fpath) {
+	vector<string> out;
+
+	string line;
+	// OPen file using given file path
+	ifstream file(fpath);
+	if (file.is_open()) {
+		while (getline(file, line)) {
+			// Only add line to vector if line is not empty
+			if (line != "")
+				out.push_back(line);
+		}
+		// Clean up
+		file.close();
+	}
+	else {
+		log("Unable to open file "s + fpath, 1);
+	}
+
+	return out;
+}
 
 uint16_t ARMv6_Assembler::djb2Hash(string text) {
 	uint16_t hash = 5381;
@@ -146,19 +174,54 @@ int ARMv6_Assembler::getRegNum(char* reg) {
 	}
 }
 
+
+void ARMv6_Assembler::addLabel(string label) {
+	// TODO: duplicate labels
+	
+	// Add label to list
+	labels[label] = PC;
+	log("Added '"s + label + "' to labels", 2);
+}
+
 pair<bool, int> ARMv6_Assembler::labelOffsetLookup(string label) {
 	// Boolean value -> if output is valid(1) or invalid(0)
 	// Integer -> immediate offset of label
-	pair<bool, int> out;
+	pair<bool, uint32_t> out(1, 0);
 
 	// Invalid
-	if (1) {
+	if (labels.find(label) == labels.end()) {
+	// if (~out.first) {
 		log("Invalid label: no label with name "s + label + "found!", 1);
 		out.first = false;
 		return out;
 	}
 
+	out.second = labels.find(label) -> second;
+
 	return out;
+}
+
+vector<char**> ARMv6_Assembler::cleanInstructions(vector<string> lines) {
+	vector<char**> instructions;
+	for (int i=0; i<lines.size(); i++) {
+		// Remove starting spaces and tabs
+		if (lines.at(i).find_first_not_of(" \t") != string::npos)
+			lines.at(i).erase(0, lines.at(i).find_first_not_of(" \t"));
+
+		// Remove comments
+		if (lines.at(i).find(";") != -1) {
+			lines.at(i).erase(lines.at(i).find(";"));
+		}
+
+		// Separate instruction into arguments list by ' ' or ','
+		char** args = strtokSplit(&lines.at(i)[0], (char*)" ,");
+		// If no elements in array skip
+		if (strArrLen(args) == 0)
+			continue;
+
+		instructions.push_back(args);
+	}
+	return instructions;
 }
 
 void ARMv6_Assembler::log(string msg, int msgLvl) {
@@ -179,22 +242,29 @@ void ARMv6_Assembler::log16bitOpcode(string instruction, uint16_t opcode) {
 	log((string)buf, 3);
 }
 
-uint16_t ARMv6_Assembler::genOpcode(string instruction) {
-	// Remove comments
-	if (instruction.find(";") != -1) {
-		instruction.erase(instruction.find(";"));
-	}
-
-	// Separate instruction into arguments list by ' ' or ','
-	char** args = strtokSplit(&instruction[0], (char*)" ,");
+ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode(char** args) {
+//uint16_t ARMv6_Assembler::genOpcode(string instruction) {
 	int argLen = strArrLen(args);
-
 	OpcodeResult result = {0, 0};
+	
+	// TODO: Need to separate into function; labels declared later can be called
+	// Label; if first argument ends with ':'
+	if (args[0][strlen(args[0])-1] == ':') {
+		addLabel(args[0]);
+		args++;		// Remove first argument
+		if (argLen - 1 == 0)
+			// TODO: return label flag
+			return result;
+		
+		argLen--;
+	}
+	// If first argument starts with '.'
+	else if (args[0][0] == '.') {}
 
 	// Flag to track if result opcode is invalid
 	bool invalidInstruction = 0;
 	uint16_t opcode = 0;
-	switch (djb2Hash(instruction)) {
+	switch (djb2Hash(args[0])) {
 		case 0xde60:		// ADCS
 			{
 				int Rd = getRegNum(args[1]);
@@ -238,7 +308,7 @@ uint16_t ARMv6_Assembler::genOpcode(string instruction) {
 						opcode |= imm / 4;
 						opcode |= Rd << 8;
 						opcode |= 0b10101 << 11;
-						log16bitOpcode(instruction, opcode);
+						// log16bitOpcode(instruction, opcode);
 					}
 					// Encoding T2
 					else if (Rd == 13) {
@@ -253,7 +323,7 @@ uint16_t ARMv6_Assembler::genOpcode(string instruction) {
 						
 						opcode |= imm / 4;
 						opcode |= 0b101100000 << 7;
-						log16bitOpcode(instruction, opcode);
+						// log16bitOpcode(instruction, opcode);
 					}
 					else {
 						log("Invalid register: Rd must be between R0 and R7 or SP!", 1);
@@ -905,7 +975,20 @@ uint16_t ARMv6_Assembler::genOpcode(string instruction) {
 			invalidInstruction = 1;
 			break;
 	}
-	return 0;
+
+	if (invalidInstruction or result.invalid) {
+		result.invalid = 1;
+		return result;
+	}
+
+	// TODO: check if result already has valid opcode
+	result.opcode = opcode;
+
+	// Increment PC on valid instruction
+	// TODO: increment PC by 8 on 32-bits instructions
+	PC += 4;
+
+	return result;
 }
 
 
@@ -1008,7 +1091,7 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode_branch(char** args, uin
 		result.invalid = 1;
 		return result;
 	}
-	int immOffset = labelOffset.second;
+	int immOffset = labelOffset.second - PC;
 
 	// Encoding T2
 	if (t2 and (immOffset < -2048 or immOffset > 2046 or immOffset % 2 != 0)) {
