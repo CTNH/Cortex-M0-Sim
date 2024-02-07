@@ -261,16 +261,13 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode(char** args) {
 	// If first argument starts with '.'
 	else if (args[0][0] == '.') {}
 
-	// Flag to track if result opcode is invalid
-	bool invalidInstruction = 0;
-	uint16_t opcode = 0;
 	switch (djb2Hash(args[0])) {
 		case 0xde60:		// ADCS
 			{
 				int Rd = getRegNum(args[1]);
 				int Rn = getRegNum(args[argLen-2]);
 				int Rm = getRegNum(args[argLen-1]);
-				opcode |= 0b0100000101000000;
+				result.opcode = 0b0100000101000000;
 			}
 			break;
 		case 0xd06e:		// ADD
@@ -283,7 +280,7 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode(char** args) {
 					int imm = strtol(args[argLen-1]+1, NULL, 0);
 					if (imm %4 != 0) {
 						log("Invalid immediate value: must be an integer multiple of four!", 1);
-						invalidInstruction = 1;
+						result.invalid = 1;
 						break;
 					}
 
@@ -291,23 +288,23 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode(char** args) {
 					if (Rd >= 0 and Rd < 8) {
 						if (Rn != 13 && Rn !=15) {
 							log("Invalid register: Rn must be SP or PC when Rd is between R0 and R7!", 1);
-							invalidInstruction = 1;
+							result.invalid = 1;
 							break;
 						}
 						if (Rn != 13 && Rn != 15) {
 							log("Invalid register: Rn must be SP or PC!", 1);
-							invalidInstruction = 1;
+							result.invalid = 1;
 							break;
 						}
 						if (imm < 0 or imm > 1020) {
 							log("Invalid immediate value: must be between 0 and 1020!", 1);
-							invalidInstruction = 1;
+							result.invalid = 1;
 							break;
 						}
 
-						opcode |= imm / 4;
-						opcode |= Rd << 8;
-						opcode |= 0b10101 << 11;
+						result.opcode = imm / 4;
+						result.opcode |= Rd << 8;
+						result.opcode |= 0b10101 << 11;
 						// log16bitOpcode(instruction, opcode);
 					}
 					// Encoding T2
@@ -317,17 +314,17 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode(char** args) {
 						}
 						if (imm < 0 or imm > 508) {
 							log("Invalid immediate value: must be between 0 and 508!", 1);
-							invalidInstruction = 1;
+							result.invalid = 1;
 							break;
 						}
 						
-						opcode |= imm / 4;
-						opcode |= 0b101100000 << 7;
+						result.opcode = imm / 4;
+						result.opcode |= 0b101100000 << 7;
 						// log16bitOpcode(instruction, opcode);
 					}
 					else {
 						log("Invalid register: Rd must be between R0 and R7 or SP!", 1);
-						invalidInstruction = 1;
+						result.invalid = 1;
 						break;
 					}
 				}
@@ -336,23 +333,23 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode(char** args) {
 					// Encoding T2
 					if (Rd != Rn) {
 						log("Invalid registers: Rd and Rn must be equal!", 1);
-						invalidInstruction = 1;
+						result.invalid = 1;
 						break;
 					}
 					if (Rd < 0 or Rd > 15 or Rm < 0 or Rm > 15) {
 						log("Invalid register: registers must be between R0 and R15!", 1);
-						invalidInstruction = 1;
+						result.invalid = 1;
 						break;
 					}
 					if (Rn == 15 and Rm == 15) {
 						log("Invalid registers: Rn and Rm must not both specify PC!", 1);
-						invalidInstruction = 1;
+						result.invalid = 1;
 						break;
 					}
-					opcode |= Rd;
-					opcode |= Rm << 3;
-					opcode |= (Rd & 0x1) << 7;		// DN bit
-					opcode |= 0b1000100 << 8;
+					result.opcode = Rd;
+					result.opcode |= Rm << 3;
+					result.opcode |= (Rd & 0x1) << 7;		// DN bit
+					result.opcode |= 0b1000100 << 8;
 				}
 			}
 			break;
@@ -367,7 +364,7 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode(char** args) {
 
 					if (Rd < 0 or Rd > 7 or Rn < 0 or Rn > 7) {
 						log("Invalid register: Rd and Rn must be between R0 and R7!", 1);
-						invalidInstruction = 1;
+						result.invalid = 1;
 						break;
 					}
 
@@ -375,26 +372,26 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode(char** args) {
 					if (Rd == Rn) {
 						if (imm < 0 or imm > 255) {
 							log("Invalid immediate value: must be between 0 and 255!", 1);
-							invalidInstruction = 1;
+							result.invalid = 1;
 							break;
 						}
 
-						opcode |= imm;
-						opcode |= getRegNum(args[1]) << 8;		// Rdn
-						opcode |= 0b110 << 11;
+						result.opcode = imm;
+						result.opcode |= getRegNum(args[1]) << 8;		// Rdn
+						result.opcode |= 0b110 << 11;
 					}
 					// Encoding T1
 					else {
 						if (imm < 0 or imm > 7) {
 							log("Invalid immediate value: must be between 0 and 7!", 1);
-							invalidInstruction = 1;
+							result.invalid = 1;
 							break;
 						}
 
-						opcode |= Rd;
-						opcode |= Rn << 3;
-						opcode |= imm << 6;
-						opcode |= 0b1110 << 9;
+						result.opcode = Rd;
+						result.opcode |= Rn << 3;
+						result.opcode |= imm << 6;
+						result.opcode |= 0b1110 << 9;
 					}
 				}
 				// Register
@@ -402,21 +399,21 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode(char** args) {
 					// Encoding T1
 					if (Rm < 0 or Rm > 7) {
 						log("Invalid register: Rm must be between 0 and 7!", 1);
-						invalidInstruction = 1;
+						result.invalid = 1;
 						break;
 					}
 
-					opcode |= Rd;
-					opcode |= Rn << 3;
-					opcode |= Rm << 6;
-					opcode |= 0b1100 << 9;
+					result.opcode |= Rd;
+					result.opcode |= Rn << 3;
+					result.opcode |= Rm << 6;
+					result.opcode |= 0b1100 << 9;
 				}
 			}
 			break;
 		case 0xd07c:		// ADR
 			{
 				// TODO
-				opcode |= 0;
+				result.opcode = 0;
 			}
 			break;
 		case 0x090b:		// ANDS
@@ -489,13 +486,13 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode(char** args) {
 
 				if (Rn < 0 or Rn > 7 or Rm < 0 or Rm > 7) {
 					log("Invalid register: Rn and Rm must be between R0 and R7!", 1);
-					invalidInstruction = 1;
+					result.invalid = 1;
 					break;
 				}
 
-				opcode |= Rn;
-				opcode |= Rm;
-				opcode |= 0b100001011 << 6;
+				result.opcode = Rn;
+				result.opcode |= Rm;
+				result.opcode |= 0b100001011 << 6;
 			}
 			break;
 		case 0xda25:		// CMP
@@ -503,7 +500,7 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode(char** args) {
 				int Rn = getRegNum(args[1]);
 				if (Rn < 0 or Rn > 14) {
 					log("Invalid register: Rn must be between R0 and R14!", 1);
-					invalidInstruction = 1;
+					result.invalid = 1;
 					break;
 				}
 
@@ -512,46 +509,46 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode(char** args) {
 					int imm = strtol(args[2]+1, NULL, 0);
 					if (imm < 0 or imm > 255) {
 						log("Invalid immediate value: must be between 0 and 255!", 1);
-						invalidInstruction = 1;
+						result.invalid = 1;
 						break;
 					}
 
-					opcode |= imm;
-					opcode |= Rn << 8;
-					opcode |= 0b101 >> 11;
+					result.opcode = imm;
+					result.opcode |= Rn << 8;
+					result.opcode |= 0b101 >> 11;
 				}
 				// Register
 				else {
 					int Rm = getRegNum(args[2]);
 					if (Rm < 0 or Rm > 14) {
 						log("Invalid register: Rm must be between R0 and R14!", 1);
-						invalidInstruction = 1;
+						result.invalid = 1;
 						break;
 					}
 
 					// Encoding T1 - Rn and Rm both from R0-R7
 					if (Rn < 8 and Rm < 8) {
-						opcode |= Rn;
-						opcode |= Rm << 3;
-						opcode |= 0b100001010;
+						result.opcode = Rn;
+						result.opcode |= Rm << 3;
+						result.opcode |= 0b100001010;
 					}
 					else {
-						opcode |= Rn;
-						opcode |= Rm << 3;
-						opcode |= (Rn >> 3) << 7;	// N bit
-						opcode |= 0b1000101 << 8;
+						result.opcode = Rn;
+						result.opcode |= Rm << 3;
+						result.opcode |= (Rn >> 3) << 7;	// N bit
+						result.opcode |= 0b1000101 << 8;
 					}
 				}
 			}
 			break;
 		case 0xb2f8:		// CPSID
 			{
-				opcode |= 0b1011011001110010;
+				result.opcode = 0b1011011001110010;
 			}
 			break;
 		case 0xb2f9:		// CPSIE
 			{
-				opcode |= 0b1011011001100010;
+				result.opcode = 0b1011011001100010;
 			}
 			break;
 		case 0xde58:		// DMB
@@ -578,7 +575,7 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode(char** args) {
 				int Rn = getRegNum(args[1]);
 				if (Rn < 0 or Rn > 7) {
 					log("Invalid register: must be between R0 and R7!", 1);
-					invalidInstruction = 1;
+					result.invalid = 1;
 					break;
 				}
 				// Writeback
@@ -599,7 +596,7 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode(char** args) {
 				int Rt = getRegNum(args[1]);
 				if (Rt < 0 or Rt > 7) {
 					log("Invalid register: Rt must be between R0 and R7!", 1);
-					invalidInstruction = 1;
+					result.invalid = 1;
 					break;
 				}
 
@@ -750,21 +747,21 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode(char** args) {
 				int Rm = getRegNum(args[2]);
 				if (Rd < 0 or Rd > 15 or Rm < 0 or Rm > 15) {
 					log("Invalid registers: no such register!", 1);
-					invalidInstruction = 1;
+					result.invalid = 1;
 					break;
 				}
 
-				opcode |= Rd;
-				opcode |= Rm << 3;
-				opcode |= (Rd >> 3) << 7;	// D bit
-				opcode |= 0b1000110 << 8;
+				result.opcode = Rd;
+				result.opcode |= Rm << 3;
+				result.opcode |= (Rd >> 3) << 7;	// D bit
+				result.opcode |= 0b1000110 << 8;
 			}
 		case 0xa42a:		// MOVS
 			{
 				int Rd = getRegNum(args[1]);
 				if (Rd < 0 or Rd > 7) {
 					log("Invalid register: Rd must be between R0 and R7!", 1);
-					invalidInstruction = 1;
+					result.invalid = 1;
 					break;
 				}
 
@@ -773,25 +770,25 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode(char** args) {
 					int imm = strtol(args[argLen-1]+1, NULL, 0);
 					if (imm < 0 or imm > 255) {
 						log("Invalid immediate value: must be between 0 and 255!", 1);
-						invalidInstruction = 1;
+						result.invalid = 1;
 						break;
 					}
 
-					opcode |= imm;
-					opcode |= Rd << 8;
-					opcode |= 0b100 << 11;
+					result.opcode = imm;
+					result.opcode |= Rd << 8;
+					result.opcode |= 0b100 << 11;
 				}
 				// Register
 				else {
 					int Rm = getRegNum(args[2]);
 					if (Rm < 0 or Rm > 7) {
 						log("Invalid register: Rm must be between R0 and R7!", 1);
-						invalidInstruction = 1;
+						result.invalid = 1;
 						break;
 					}
 
-					opcode |= Rd;
-					opcode |= Rm << 3;
+					result.opcode = Rd;
+					result.opcode |= Rm << 3;
 				}
 			}
 			break;
@@ -813,18 +810,18 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode(char** args) {
 				int Rm = getRegNum(args[3]);
 				if (Rd != Rm) {
 					log("Invalid registers: Rd and Rm must be the same!", 1);
-					invalidInstruction = 1;
+					result.invalid = 1;
 					break;
 				}
 				if (Rd < 0 or Rd > 7 or Rm < 0 or Rm > 7) {
 					log("Invalid register: Rm must be between R0 and R7!", 1);
-					invalidInstruction = 1;
+					result.invalid = 1;
 					break;
 				}
 
-				opcode |= Rd;
-				opcode |= Rn << 3;
-				opcode |= 0b100001101 << 6;
+				result.opcode = Rd;
+				result.opcode |= Rn << 3;
+				result.opcode |= 0b100001101 << 6;
 			}
 			break;
 		case 0xc0e9:		// MVNS
@@ -833,17 +830,17 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode(char** args) {
 				int Rm = getRegNum(args[2]);
 				if (Rd < 0 or Rd > 7 or Rm < 0 or Rm > 7) {
 					log("Invalid register: Rd and Rm must be between R0 and R7!", 1);
-					invalidInstruction = 1;
+					result.invalid = 1;
 					break;
 				}
 
-				opcode |= Rd;
-				opcode |= Rm << 3;
-				opcode |= 0b100001111 << 6;
+				result.opcode = Rd;
+				result.opcode |= Rm << 3;
+				result.opcode |= 0b100001111 << 6;
 			}
 		case 0x0932:		// NOP
 			{
-				opcode |= 0b10111111 << 8;
+				result.opcode = 0b10111111 << 8;
 			}
 			break;
 		case 0xc92b:		// ORRS
@@ -871,18 +868,18 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode(char** args) {
 				int Rm = getRegNum(args[argLen-1]);
 				if (Rd != Rn) {
 					log("Invalid registers: Rd and Rn must be the same!", 1);
-					invalidInstruction = 1;
+					result.invalid = 1;
 					break;
 				}
 				if (Rd < 0 or Rd > 7 or Rm < 0 or Rm > 7) {
 					log("Invalid registers: all registers must be between R0 and R7!", 1);
-					invalidInstruction = 1;
+					result.invalid = 1;
 					break;
 				}
 
-				opcode |= Rd;
-				opcode |= Rm << 3;
-				opcode |= 0b100000111 << 6;
+				result.opcode = Rd;
+				result.opcode |= Rm << 3;
+				result.opcode |= 0b100000111 << 6;
 			}
 			break;
 		case 0x707f:		// RSBS
@@ -933,8 +930,8 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode(char** args) {
 					break;
 				}
 
-				opcode |= imm;
-				opcode |= 0b11011111 << 8;
+				result.opcode = imm;
+				result.opcode |= 0b11011111 << 8;
 			}
 			break;
 		case 0x1466:		// SXTB
@@ -949,13 +946,13 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode(char** args) {
 				int Rm = getRegNum(args[1]);
 				if (Rn < 0 or Rn > 7 or Rm < 0 or Rm > 7) {
 					log("Invalid registers: Rd and Rm must be between R0 and R7!", 1);
-					invalidInstruction = 1;
+					result.invalid = 1;
 					break;
 				}
 
-				opcode |= Rn;
-				opcode |= Rm << 3;
-				opcode |= 0b0100001000 << 6;
+				result.opcode = Rn;
+				result.opcode |= Rm << 3;
+				result.opcode |= 0b0100001000 << 6;
 			}
 			break;
 		case 0x2d28:		// UXTB
@@ -965,24 +962,20 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode(char** args) {
 			result = genOpcode_extendRegister(args, 0b10);
 			break;
 		case 0x2e47:		// WFE
-			opcode |= 0b1011111100100000;
+			result.opcode = 0b1011111100100000;
 			break;
 		case 0x2e4b:		// WFI
-			opcode |= 0b1011111100110000;
+			result.opcode = 0b1011111100110000;
 			break;
 
 		invalid:
-			invalidInstruction = 1;
+			result.invalid = 1;
 			break;
 	}
 
-	if (invalidInstruction or result.invalid) {
-		result.invalid = 1;
+	if (result.invalid)
 		return result;
-	}
 
-	// TODO: check if result already has valid opcode
-	result.opcode = opcode;
 
 	// Increment PC on valid instruction
 	// TODO: increment PC by 8 on 32-bits instructions
