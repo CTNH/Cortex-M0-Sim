@@ -13,8 +13,9 @@ extern "C" {
 class ARMv6_Assembler {
 	public:
 		struct OpcodeResult {
-			bool invalid;
+			bool invalid;		// True to invalidate all other struct members
 			uint32_t opcode;
+			bool i32;			// True for 32-bits instruction, False for 16-bits
 		};
 
 	private:

@@ -245,7 +245,7 @@ void ARMv6_Assembler::log16bitOpcode(string instruction, uint16_t opcode) {
 ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode(char** args) {
 //uint16_t ARMv6_Assembler::genOpcode(string instruction) {
 	int argLen = strArrLen(args);
-	OpcodeResult result = {0, 0};
+	OpcodeResult result = {};
 	
 	// TODO: Need to separate into function; labels declared later can be called
 	// Label; if first argument ends with ':'
@@ -986,7 +986,7 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode(char** args) {
 
 
 ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode_bitShift(char** args, uint8_t opcodeImmPrefix, uint8_t opcodeRegPrefix) {
-	OpcodeResult result = {0, 0};
+	OpcodeResult result = {};
 	int argLen = strArrLen(args);
 
 	int Rd = getRegNum(args[1]);
@@ -1044,7 +1044,7 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode_bitShift(char** args, u
 
 
 ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode_bitwise(char** args, uint8_t opcodePrefix) {
-	OpcodeResult result = {0, 0};
+	OpcodeResult result = {};
 	int argLen = strArrLen(args);
 
 	int Rd = getRegNum(args[1]);
@@ -1076,7 +1076,7 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode_bitwise(char** args, ui
 
 
 ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode_branch(char** args, uint8_t opcodePrefix, bool t2) {
-	OpcodeResult result = {0, 0};
+	OpcodeResult result = {};
 
 	// Encoding T1
 	pair<bool, int> labelOffset = labelOffsetLookup(args[1]);
@@ -1129,7 +1129,7 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode_branch(char** args, uin
 
 
 ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode_reverseBytes(char** args, uint8_t opcodePrefix) {
-	OpcodeResult result = {0, 0};
+	OpcodeResult result = {};
 	int Rd = getRegNum(args[1]);
 	int Rm = getRegNum(args[2]);
 	if (Rd < 0 or Rd > 7 or Rm < 0 or Rm > 7) {
@@ -1151,7 +1151,7 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode_reverseBytes(char** arg
 
 
 ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode_loadStoreImm(char** args, uint8_t opcodePrefix) {
-	OpcodeResult result;
+	OpcodeResult result = {};
 
 	int Rt = getRegNum(args[1]);
 	int Rn = getRegNum(args[2]+1);
@@ -1241,7 +1241,7 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode_loadStoreImm(char** arg
 
 
 ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode_loadStoreReg(char** args, uint8_t opcodePrefix) {
-	OpcodeResult result;
+	OpcodeResult result = {};
 	
 	int Rt = getRegNum(args[1]);
 	int Rn = getRegNum(args[2]+1);
@@ -1271,7 +1271,7 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode_loadStoreReg(char** arg
 
 
 ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode_extendRegister(char** args, uint8_t opcodePrefix) {
-	OpcodeResult result;
+	OpcodeResult result = {};
 
 	int Rd = getRegNum(args[1]);
 	int Rm = getRegNum(args[2]);
