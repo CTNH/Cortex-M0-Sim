@@ -37,6 +37,8 @@ class ARMv6_Assembler {
 		uint16_t djb2Hash(string text);
 		// Gets an integer given a string presentation of a register
 		int getRegNum(char* reg);
+		// Gets SYSm value given a string representation of a special register
+		uint8_t getSYSm(char* spReg);
 
 		// Refer to A4.2.1 in ARMv6-M Architecture Reference Manual for calculating PC value
 		// Adds a label to the list
@@ -67,6 +69,8 @@ class ARMv6_Assembler {
 		OpcodeResult genOpcode_loadStoreReg(char** args, uint8_t opcodePrefix);
 		// For SXTB, SXTH, UXTB, UXTH
 		OpcodeResult genOpcode_extendRegister(char** args, uint8_t opcodePrefix);
+		// For DMB, DSB, ISB
+		OpcodeResult genOpcode_barrier(char** args, uint8_t opcodePrefix);
 		// ====
 	public:
 		// Class Constructor

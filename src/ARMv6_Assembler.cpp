@@ -152,6 +152,7 @@ bool ARMv6_Assembler::hashUniqueCheck() {
 	return ~collision;
 };
 
+
 int ARMv6_Assembler::getRegNum(char* reg) {
 	// Assumes input is in format of "Rn" where n is 0-15
 	int out = strtol(reg, NULL, 0);
@@ -172,6 +173,28 @@ int ARMv6_Assembler::getRegNum(char* reg) {
 		default:
 				return -1;
 	}
+}
+
+uint8_t ARMv6_Assembler::getSYSm(char* spReg) {
+	map<string, int> sysmValues = {
+		{"APSR",    0},
+		{"IAPSR",   1},
+		{"EAPSR",   2},
+		{"XPSR",    3},
+		{"IPSR",    5},
+		{"EPSR",    6},
+		{"IEPSR",   7},
+		{"MSP",     8},
+		{"PSP",     9},
+		{"PRIMASK", 16},
+		{"CONTROL", 20}
+	};
+
+	// No special register found
+	if(sysmValues.count(spReg))
+		return 0b11111111;
+	else
+		return sysmValues.at(spReg);
 }
 
 
@@ -553,12 +576,12 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode(char** args) {
 			break;
 		case 0xde58:		// DMB
 			{
-				// TODO: 32-bit instruction
+				result = genOpcode_barrier(args, 0b0101);
 			}
 			break;
 		case 0xdf1e:		// DSB
 			{
-				// TODO: 32-bit instruction
+				result = genOpcode_barrier(args, 0b0100);
 			}
 			break;
 		case 0x409e:		// EORS
@@ -566,7 +589,7 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode(char** args) {
 			break;
 		case 0xf463:		// ISB
 			{
-				// TODO: 32-bit instruction
+				result = genOpcode_barrier(args, 0b0110);
 			}
 			break;
 		case 0xff42:		// LDM
@@ -794,12 +817,45 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode(char** args) {
 			break;
 		case 0x0557:		// MRS
 			{
-				// TODO: 32-bit instruction
+				result.i32 = 1;
+				int Rd = getRegNum(args[1]);
+				if (Rd < 0 or Rd == 13 or Rd == 15) {
+					log("Invalid register: Rd must not be SP or PC!", 1);
+					result.invalid = 1;
+					break;
+				}
+				uint8_t SYSm = getSYSm(args[2]);
+				if (SYSm == 0b11111111) {
+					log("Invalid special register: cannot find such register!", 1);
+					result.invalid = 1;
+					break;
+				}
+
+				result.opcode = SYSm;
+				result.opcode |= Rd << 8;
+				result.opcode |= 0b11110011111011111000 << 12;
 			}
 			break;
 		case 0x0577:		// MSR
 			{
-				// TODO: 32-bit instruction
+				result.i32 = 1;
+				uint8_t SYSm = getSYSm(args[1]);
+				if (SYSm == 0b11111111) {
+					log("Invalid special register: cannot find such register!", 1);
+					result.invalid = 1;
+					break;
+				}
+				int Rd = getRegNum(args[2]);
+				if (Rd < 0 or Rd == 13 or Rd == 15) {
+					log("Invalid register: Rd must not be SP or PC!", 1);
+					result.invalid = 1;
+					break;
+				}
+
+				result.opcode = SYSm;
+				result.opcode |= 0b10001000 << 8;
+				result.opcode |= Rd << 16;
+				result.opcode |= 0b111100111000 << 20;
 			}
 			break;
 		case 0xbc66:		// MULS
@@ -968,7 +1024,8 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode(char** args) {
 			result.opcode = 0b1011111100110000;
 			break;
 
-		invalid:
+		default:
+			log("Invalid instruction: instruction not found!", 1);
 			result.invalid = 1;
 			break;
 	}
@@ -1292,4 +1349,28 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode_extendRegister(char** a
 
 	return result;
 }
+
+
+ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode_barrier(char** args, uint8_t opcodePrefix) {
+	OpcodeResult result = {};
+
+	result.i32 = 1;
+	if (strArrLen(args) > 1) {
+		if ((string)args[1] == "SY")
+			result.opcode |= 0b1111;
+		else {
+			log("Invalid option: must either be SY or omitted!", 1);
+			result.invalid = 1;
+			return result;
+		}
+	}
+	// DMB  11110 0 111 01 1 1111 10 0 0 1111 0101 option
+	// DSB  11110 0 111 01 1 1111 10 0 0 1111 0100 option
+	// ISB  11110 0 111 01 1 1111 10 0 0 1111 0110 option
+	result.opcode |= opcodePrefix << 4;
+	result.opcode |= 0b111100111011111110001111 << 8;
+
+	return result;
+}
+
 
