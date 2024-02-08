@@ -61,6 +61,8 @@ class ARMv6_Assembler {
 		OpcodeResult genOpcode_bitwise(char** args, uint8_t opcodePrefix);
 		// For B{cond}
 		OpcodeResult genOpcode_branch(char** args, uint8_t opcodePrefix, bool t2=0);
+		// For BLX, BX
+		OpcodeResult genOpcode_branchExchange(char** args, uint8_t opcodePrefix);
 		// For REV, REV16, REVSH
 		OpcodeResult genOpcode_reverseBytes(char** args, uint8_t opcodePrefix);
 		// For LDR{B|H}, STR{B|H}

@@ -499,9 +499,25 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode(char** args) {
 			result = genOpcode_bitwise(args, 0b1110);
 			break;
 		case 0x8a36:		// BKPT
+			{
+				int imm = strtol(args[1]+1, NULL, 0);
+				if (imm < 0 or imm > 255) {
+					log("Invalid immediate value: must be between 0 and 255!", 1);
+					result.invalid = 1;
+					break;
+				}
+
+				result.opcode = imm;
+				result.opcode |= 0b10111110 << 8;
+			}
+			break;
 		case 0x7313:		// BL
 		case 0xd5cb:		// BLX
+			result = genOpcode_branchExchange(args, 0b10001111);
+			break;
 		case 0x731f:		// BX
+			result = genOpcode_branchExchange(args, 0b10001110);
+			break;
 		case 0xda23:		// CMN
 			{
 				int Rn = getRegNum(args[1]);
@@ -565,32 +581,22 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode(char** args) {
 			}
 			break;
 		case 0xb2f8:		// CPSID
-			{
-				result.opcode = 0b1011011001110010;
-			}
+			result.opcode = 0b1011011001110010;
 			break;
 		case 0xb2f9:		// CPSIE
-			{
-				result.opcode = 0b1011011001100010;
-			}
+			result.opcode = 0b1011011001100010;
 			break;
 		case 0xde58:		// DMB
-			{
-				result = genOpcode_barrier(args, 0b0101);
-			}
+			result = genOpcode_barrier(args, 0b0101);
 			break;
 		case 0xdf1e:		// DSB
-			{
-				result = genOpcode_barrier(args, 0b0100);
-			}
+			result = genOpcode_barrier(args, 0b0100);
 			break;
 		case 0x409e:		// EORS
 			result = genOpcode_bitwise(args, 0b0001);
 			break;
 		case 0xf463:		// ISB
-			{
-				result = genOpcode_barrier(args, 0b0110);
-			}
+			result = genOpcode_barrier(args, 0b0110);
 			break;
 		case 0xff42:		// LDM
 			{
@@ -748,14 +754,10 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode(char** args) {
 			}
 			break;
 		case 0xf7fc:		// LDRSB
-			{
-				result = genOpcode_loadStoreReg(args, 0b011);
-			}
+			result = genOpcode_loadStoreReg(args, 0b011);
 			break;
 		case 0xf802:		// LDRSH
-			{
-				result = genOpcode_loadStoreReg(args, 0b111);
-			}
+			result = genOpcode_loadStoreReg(args, 0b111);
 			break;
 		case 0x2783:		// LSLS
 			result = genOpcode_bitShift(args, 0b00, 0b0010);
@@ -895,9 +897,7 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode(char** args) {
 				result.opcode |= 0b100001111 << 6;
 			}
 		case 0x0932:		// NOP
-			{
-				result.opcode = 0b10111111 << 8;
-			}
+			result.opcode = 0b10111111 << 8;
 			break;
 		case 0xc92b:		// ORRS
 			result = genOpcode_bitwise(args, 0b1100);
@@ -945,6 +945,8 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode(char** args) {
 			{}
 			break;
 		case 0x1d33:		// SEV
+			result.opcode = 0b1011111101000000;
+			break;
 		case 0x1f19:		// STM
 		case 0x1f1e:		// STR
 			{
@@ -1181,6 +1183,20 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode_branch(char** args, uin
 		result.opcode |= 0b1101 << 12;
 	}
 
+	return result;
+}
+
+
+ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode_branchExchange(char** args, uint8_t opcodePrefix) {
+	OpcodeResult result = {};
+	int Rm = getRegNum(args[1]);
+	if (Rm < 0 or Rm == 13 or Rm == 15) {
+		log("Invalid register: SP or PC can not be used!", 1);
+		result.invalid = 1;
+		return result;
+	}
+	result.opcode = Rm << 3;
+	result.opcode |= opcodePrefix << 7;
 	return result;
 }
 
