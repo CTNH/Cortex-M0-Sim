@@ -198,12 +198,16 @@ uint8_t ARMv6_Assembler::getSYSm(char* spReg) {
 }
 
 
-void ARMv6_Assembler::addLabel(string label) {
-	// TODO: duplicate labels
+bool ARMv6_Assembler::addLabel(string label) {
+	if (labels.find(label) != labels.end()) {
+		log("Invalid label: label already exists!", 1);
+		return 0;
+	}
 	
 	// Add label to list
 	labels[label] = PC;
 	log("Added '"s + label + "' to labels", 2);
+	return 1;
 }
 
 pair<bool, int> ARMv6_Assembler::labelOffsetLookup(string label) {
@@ -270,19 +274,23 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode(char** args) {
 	int argLen = strArrLen(args);
 	OpcodeResult result = {};
 	
-	// TODO: Need to separate into function; labels declared later can be called
 	// Label; if first argument ends with ':'
 	if (args[0][strlen(args[0])-1] == ':') {
 		addLabel(args[0]);
-		args++;		// Remove first argument
-		if (argLen - 1 == 0)
-			// TODO: return label flag
+		// If only label exists on line
+		if (argLen - 1 == 0) {
+			// Invalidate opcode
+			result.invalid = 1;
 			return result;
-		
+		}
+
+		args++;		// Remove first argument
 		argLen--;
 	}
 	// If first argument starts with '.'
-	else if (args[0][0] == '.') {}
+	else if (args[0][0] == '.') {
+		// TODO
+	}
 
 	switch (djb2Hash(args[0])) {
 		case 0xde60:		// ADCS
@@ -512,6 +520,38 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode(char** args) {
 			}
 			break;
 		case 0x7313:		// BL
+			{
+				pair<bool, int> labelOffset = labelOffsetLookup(args[1]);
+				if (!labelOffset.first) {
+					result.invalid = 1;
+					return result;
+				}
+				int immOffset = labelOffset.second - PC;
+				if (immOffset < -16777216 or immOffset > 16777214 or immOffset % 2 == 1){
+					log("Invalid immediate offset: must be even number in between -16777216 and 16777214", 1);
+					result.invalid = 1;
+					break;
+				}
+
+				// From ARMv6-M Architecure Reference Manual A6.7.13
+				// I1 = NOT(J1 EOR S); I2 = NOT(J2 EOR S); imm32 = SignExtend(S:I1:I2:imm10:imm11:'0', 32);
+				int imm11 = (immOffset >> 1) & 0b11111111111;
+				int imm10 = (immOffset >> 12) & 0b1111111111;
+				int S = immOffset >> 24 & 1;
+				int j1 = ~((immOffset >> 24) & 1) ^ S;
+				int j2 = ~((immOffset >> 23) & 1) ^ S;
+
+				result.i32 = 1;
+				result.opcode = imm11;
+				result.opcode |= j2 << 11;
+				result.opcode |= 1 << 12;
+				result.opcode |= j2 << 13;
+				result.opcode |= 0b11 << 14;
+				result.opcode |= imm10 << 16;
+				result.opcode |= S << 25;
+				result.opcode |= 0b11110 << 27;
+			}
+			break;
 		case 0xd5cb:		// BLX
 			result = genOpcode_branchExchange(args, 0b10001111);
 			break;
@@ -657,72 +697,9 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode(char** args) {
 				// TODO: remove ']' from last arg if exist
 				switch (itype) {
 					case imm:
-						{
-							/*
-							int Rn = getRegNum(args[2]+1);
-							if ((Rn < 0 or Rn > 7) and Rn != 13) {
-								log("Invalid register: Rn must be between R0 and R7 or SP!", 1);
-								invalidInstruction = 1;
-								break;
-							}
-
-							int imm = 0;
-							// Only change immediate value if argument exists
-							if (argLen > 3) {
-								imm = strtol(args[3]+1, NULL, 0);
-								// Assume R0-R7 as base; use 124 as upper limit
-								int uplim = 124;
-								// SP as base
-								if (Rn == 13)
-									uplim = 1020;
-
-								if (imm < 0 or imm > uplim) {
-									log("Invalid immediate value: must be between 0 and "s + to_string(uplim) + "!", 1);
-									invalidInstruction = 1;
-									break;
-								}
-							}
-							else {
-								log("Immediate offset not provided, setting to 0.", 3);
-							}
-
-							// Encoding T1
-							if (Rn != 13) {
-								// LDR  011 0 1 imm5 Rn Rt
-								opcode |= Rt;
-								opcode |= Rn << 3;
-								opcode |= imm << 6;
-								opcode |= 0b01101 << 11;
-							}
-							// Encoding T2
-							else {
-								// LDR  1001 1 Rt imm8
-								opcode |= imm;
-								opcode |= Rt << 8;
-								opcode |= 0b10011 << 11;
-							}
-						*/
-							result = genOpcode_loadStoreImm(args, 0b01101);
-						}
+						result = genOpcode_loadStoreImm(args, 0b01101);
 						break;
 					case reg:
-						/*
-						{
-							int Rn = getRegNum(args[2]+1);
-							int Rm = getRegNum(args[3]);
-							if (Rn < 0 or Rn > 7 or Rm < 0 or Rm > 7) {
-								log("Invalid register: all registers must be between R0 and R7!", 1);
-								invalidInstruction = 1;
-								break;
-							}
-
-							// LDR  0101 100 Rm Rn Rt
-							opcode |= Rt;
-							opcode |= Rn << 3;
-							opcode |= Rm << 6;
-							opcode |= 0b0101100;
-						}
-						*/
 						result = genOpcode_loadStoreReg(args, 0b100);
 						break;
 					case ltr:
@@ -939,10 +916,45 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode(char** args) {
 			}
 			break;
 		case 0x707f:		// RSBS
-			{}
+			{
+				int Rd = getRegNum(args[1]);
+				int Rn = getRegNum(args[argLen-2]);
+				if ((string)args[-1] != "#0") {
+					log(": an constant of #0 must pe provided!", 1);
+					result.invalid = 1;
+					break;
+				}
+				if (Rd < 0 or Rd > 7 or Rn < 0 or Rn > 7) {
+					log("Invalid registers: all registers must be between R0 and R7!", 1);
+					result.invalid = 1;
+					break;
+				}
+
+				result.opcode = Rd;
+				result.opcode |= Rn << 3;
+				result.opcode |= 0b100001001 << 6;
+			}
 			break;
 		case 0xb4b0:		// SBCS
-			{}
+			{
+				int Rd = getRegNum(args[1]);
+				int Rn = getRegNum(args[argLen-2]);
+				int Rm = getRegNum(args[argLen-1]);
+				if (Rd != Rn) {
+					log("Invalid registers: Rd and Rn must be the same!", 1);
+					result.invalid = 1;
+					break;
+				}
+				if (Rd < 0 or Rd > 7 or Rm < 0 or Rm > 7) {
+					log("Invalid registers: all registers must be between R0 and R7!", 1);
+					result.invalid = 1;
+					break;
+				}
+
+				result.opcode = Rd;
+				result.opcode |= Rm << 3;
+				result.opcode |= 0b100000110 << 6;
+			}
 			break;
 		case 0x1d33:		// SEV
 			result.opcode = 0b1011111101000000;
@@ -1036,9 +1048,11 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode(char** args) {
 		return result;
 
 
-	// Increment PC on valid instruction
-	// TODO: increment PC by 8 on 32-bits instructions
-	PC += 4;
+	// Increment PC by 8 on 32-bits instructions
+	if (result.i32)
+		PC += 8;
+	else
+		PC += 4;
 
 	return result;
 }

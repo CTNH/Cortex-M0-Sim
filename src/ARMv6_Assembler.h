@@ -41,8 +41,8 @@ class ARMv6_Assembler {
 		uint8_t getSYSm(char* spReg);
 
 		// Refer to A4.2.1 in ARMv6-M Architecture Reference Manual for calculating PC value
-		// Adds a label to the list
-		void addLabel(string label);
+			// Adds a label to the list; True for success, False for not
+		bool addLabel(string label);
 		// Get an immediate offset given a string label; boolean is used to track if offset is valid
 		pair<bool, int> labelOffsetLookup(string label);
 		// Clean up instructions to aid processing
