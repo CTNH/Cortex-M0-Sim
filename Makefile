@@ -11,7 +11,8 @@ default_target: all clean
 all:
 	mkdir -p $(BIN_DIR)
 	@$(MAKE) build
-	gcc -lm -Wall -o $(BIN_DIR)pico_emu *.o
+	g++ -lm -Wall -o $(BIN_DIR)pico_emu *.o
+	# gcc -lm -Wall -o $(BIN_DIR)pico_emu *.o
 #gcc -Wall $(SRC_DIR)*.c -o $(BIN_DIR)pico_emu
 
 debug:
@@ -20,6 +21,7 @@ debug:
 
 # Produce object files
 build:
+	g++ -c -Wall $(SRC_DIR)*.cpp
 	gcc -c -Wall $(SRC_DIR)*.c
 
 # Produce assembly files
