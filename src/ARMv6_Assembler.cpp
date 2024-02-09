@@ -443,8 +443,33 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode(char** args) {
 			break;
 		case 0xd07c:		// ADR
 			{
-				// TODO
-				result.opcode = 0;
+				int Rd = getRegNum(args[1]);
+				if (Rd < 0 or Rd > 7) {
+					log("Invalid registers: Rd must be between R0 and R7!", 1);
+					result.invalid = 1;
+					break;
+				}
+				int immOffset;
+				if ((string)args[2] == "[PC") {
+					immOffset = strtol(args[3]+1, NULL, 0);
+				}
+				else {
+					pair<bool, int> labelOffset = labelOffsetLookup(args[2]);
+					if (!labelOffset.first) {
+						result.invalid = 1;
+						break;
+					}
+					immOffset = labelOffset.second - PC;
+				}
+				if (immOffset < 0 or immOffset > 1020 or immOffset % 4 != 0) {
+					log("Invalid immediate offset: must be a multiple of 4 in between -2048 and 2046!", 1);
+					result.invalid = 1;
+					return result;
+				}
+
+				result.opcode = immOffset;
+				result.opcode |= Rd << 8;
+				result.opcode |= 0b10100 << 11;
 			}
 			break;
 		case 0x090b:		// ANDS
