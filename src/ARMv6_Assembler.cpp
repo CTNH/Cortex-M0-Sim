@@ -343,8 +343,8 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode(char** args) {
 						if (Rn != 13) {
 							log("Invalid register: Rn must also be SP!", 1);
 						}
-						if (imm < 0 or imm > 508) {
-							log("Invalid immediate value: must be between 0 and 508!", 1);
+						if (imm % 4 != 0 or imm < 0 or imm > 508) {
+							log("Invalid immediate value: must be a multiple of 4 between 0 and 508!", 1);
 							result.invalid = 1;
 							break;
 						}
@@ -991,7 +991,29 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode(char** args) {
 			}
 			break;
 		case 0x1f2f:		// SUB
+			{
+				int Rd = getRegNum(args[1]);
+				int Rn = getRegNum(args[argLen-2]);
+				if (Rd != 13 or Rn != 13) {
+					log("Invalid register: Rd and Rn must be SP!", 1);
+					result.invalid = 1;
+					break;
+				}
+
+				int imm = strtol(args[argLen-1]+1, NULL, 0);
+				if (imm % 4 != 0 or imm < 0 or imm > 508) {
+					log("Invalid immediate value: must be a multiple of 4 between 0 and 508!", 1);
+					result.invalid = 1;
+					break;
+				}
+				
+				result.opcode = imm >> 2;
+				result.opcode |= 0b101100001 << 7;
+			}
+			break;
 		case 0x0562:		// SUBS
+			{}
+			break;
 		case 0x1f51:		// SVC
 			{
 				int imm = strtol(args[1]+1, NULL, 0);
