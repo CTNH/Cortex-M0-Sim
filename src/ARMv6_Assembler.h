@@ -73,6 +73,8 @@ class ARMv6_Assembler {
 		OpcodeResult genOpcode_extendRegister(char** args, uint8_t opcodePrefix);
 		// For DMB, DSB, ISB
 		OpcodeResult genOpcode_barrier(char** args, uint8_t opcodePrefix);
+
+		OpcodeResult genOpcode_popPush(char** args, uint8_t opcodePrefix, char* extraReg);
 		// ====
 	public:
 		// Class Constructor

@@ -905,10 +905,10 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode(char** args) {
 			result = genOpcode_bitwise(args, 0b1100);
 			break;
 		case 0x11b4:		// POP
-			{}
+			result = genOpcode_popPush(args, 1, (char*)"PC");
 			break;
 		case 0x6265:		// PUSH
-			{}
+			result = genOpcode_popPush(args, 1, (char*)"LR");
 			break;
 		case 0x18f2:		// REV
 			result = genOpcode_reverseBytes(args, 0b00);
@@ -1450,4 +1450,68 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode_barrier(char** args, ui
 	return result;
 }
 
+
+ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode_popPush(char** args, uint8_t opcodePrefix, char* extraReg) {
+	OpcodeResult result = {};
+
+	int argLen = strArrLen(args);
+	// Null terminate last character of last argument to remove '}'
+	if (args[argLen - 1][strlen(args[argLen-1])-1]) {
+		log("Invalid instruction: registers must be surrounded by { and }!", 1);
+		result.invalid = 1;
+		return result;
+	}
+	args[argLen - 1][strlen(args[argLen-1])-1] = '\0';
+
+	// POP  -> 0-7, PC
+	// PUSH -> 0-7, LR
+	int minReg = 0;
+	int maxReg = 7;
+
+	for (int i=1; i<strArrLen(args); i++) {
+		// Find '-' and assumes is range
+		if (((string)args[i]).find("-")) {
+			char** regRange = strtokSplit(args[i], (char*)"-");
+			int startReg = getRegNum(regRange[0]);
+			int endReg = getRegNum(regRange[1]);
+			if (strArrLen(regRange) != 2 or startReg > endReg) {
+				log("Invalid register range: please supply range in format of Rn-Rm where n < m!", 1);
+				result.invalid = 1;
+				return result;
+			}
+
+			if (startReg < minReg or endReg > maxReg) {
+				log("Invalid register range: must be between R0 and R7!", 1);
+				result.invalid = 1;
+				return result;
+			}
+
+			for (int j=startReg; j<endReg; j++) {
+				result.opcode |= 1 << j;
+			}
+		}
+		// No '-' found in argument, assume to not be range
+		else {
+			int reg = getRegNum(args[i]);
+			if (reg < minReg or (reg > maxReg and reg != getRegNum(extraReg))) {
+				log("Invalid register range: must be "s + extraReg + " or between R0 and R7!", 1);
+				result.invalid = 1;
+				return result;
+			}
+
+			if (reg != getRegNum(extraReg))
+				result.opcode |= 1 << reg;
+			else
+				result.opcode |= 1 << 8;
+		}
+	}
+
+	// POP   1011 1 10 P register_list
+	// PUSH  1011 0 10 M register_list
+	result.opcode |= 0b10 << 9;
+	result.opcode |= opcodePrefix << 11;
+	result.opcode |= 0b1011 << 12;
+
+	return result;
+}
 
