@@ -71,12 +71,15 @@ class ARMv6_Assembler {
 		OpcodeResult genOpcode_loadStoreImm(char** args, uint8_t opcodePrefix);
 		// For LDR{B|H|SB|SH}, STR{B|H}
 		OpcodeResult genOpcode_loadStoreReg(char** args, uint8_t opcodePrefix);
+		// For LDM, STM
+		OpcodeResult genOpcode_loadStoreMulReg(char** args, uint8_t opcodePrefix);
 		// For SXTB, SXTH, UXTB, UXTH
 		OpcodeResult genOpcode_extendRegister(char** args, uint8_t opcodePrefix);
 		// For DMB, DSB, ISB
 		OpcodeResult genOpcode_barrier(char** args, uint8_t opcodePrefix);
-
+		// For POP, PUSG
 		OpcodeResult genOpcode_popPush(char** args, uint8_t opcodePrefix, char* extraReg);
+
 		// ====
 	public:
 		// Class Constructor

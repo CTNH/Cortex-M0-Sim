@@ -664,42 +664,7 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode(char** args) {
 			result = genOpcode_barrier(args, 0b0110);
 			break;
 		case 0xff42:		// LDM
-			{
-				int Rn = getRegNum(args[1]);
-				if (Rn < 0 or Rn > 7) {
-					log("Invalid register: must be between R0 and R7!", 1);
-					result.invalid = 1;
-					break;
-				}
-				// Writeback
-				bool writeback = 0;
-				if (args[1][strlen(args[1])-1] == '!') {
-					args[1][strlen(args[1])-1] = '\0';
-					writeback = 1;
-				}
-
-				uint16_t register_list = getRegList(args, 2);
-				// No registers in register list
-				if (register_list == 0) {
-					result.invalid = 1;
-					break;
-				}
-				else if (register_list > 0xFF) {
-					log("Invalid registers: register in list must be R0 and R7!", 1);
-					result.invalid = 1;
-					break;
-				}
-
-				if (writeback and (register_list >> Rn) & 1) {
-					log("Invalid writeback: Rn cannot be in list with writeback!", 1);
-					result.invalid = 1;
-					break;
-				}
-
-				result.opcode = register_list;
-				result.opcode |= Rn << 8;
-				result.opcode |= 0b11001 << 11;
-			}
+			result = genOpcode_loadStoreMulReg(args, 1);
 			break;
 		case 0xff47:		// LDR
 			{
@@ -1010,6 +975,8 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode(char** args) {
 			result.opcode = 0b1011111101000000;
 			break;
 		case 0x1f19:		// STM
+			genOpcode_loadStoreMulReg(args, 0);
+			break;
 		case 0x1f1e:		// STR
 			{
 				// Immediate
@@ -1424,6 +1391,51 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode_loadStoreReg(char** arg
 	result.opcode |= Rm << 6;
 	result.opcode |= opcodePrefix << 9;
 	result.opcode |= 0b0101 << 12;
+
+	return result;
+}
+
+
+ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode_loadStoreMulReg(char** args, uint8_t opcodePrefix) {
+	OpcodeResult result = {};
+
+	int Rn = getRegNum(args[1]);
+	if (Rn < 0 or Rn > 7) {
+		log("Invalid register: must be between R0 and R7!", 1);
+		result.invalid = 1;
+		return result;
+	}
+	// Writeback
+	bool writeback = 0;
+	if (args[1][strlen(args[1])-1] == '!') {
+		args[1][strlen(args[1])-1] = '\0';
+		writeback = 1;
+	}
+
+	uint16_t register_list = getRegList(args, 2);
+	// No registers in register list
+	if (register_list == 0) {
+		result.invalid = 1;
+		return result;
+	}
+	else if (register_list > 0xFF) {
+		log("Invalid registers: register in list must be R0 and R7!", 1);
+		result.invalid = 1;
+		return result;
+	}
+
+	if (writeback and (register_list >> Rn) & 1) {
+		log("Invalid writeback: Rn cannot be in list with writeback!", 1);
+		result.invalid = 1;
+		return result;
+	}
+
+	// LDM  1100 1 Rn register_list
+	// STM  1100 0 Rn register_list
+	result.opcode = register_list;
+	result.opcode |= Rn << 8;
+	result.opcode |= opcodePrefix << 11;
+	result.opcode |= 0b1100 << 12;
 
 	return result;
 }
