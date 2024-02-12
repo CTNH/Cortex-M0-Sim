@@ -1,4 +1,5 @@
 #include "ARMv6_Assembler.h"
+#include <complex>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -298,7 +299,21 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode(char** args) {
 				int Rd = getRegNum(args[1]);
 				int Rn = getRegNum(args[argLen-2]);
 				int Rm = getRegNum(args[argLen-1]);
-				result.opcode = 0b0100000101000000;
+
+				if (Rd != Rn) {
+					log("Invalid registers: Rd and Rn must be equal!", 1);
+					result.invalid = 1;
+					break;
+				}
+				if (Rd < 0 or Rd > 7 or Rm < 0 or Rm > 7) {
+					log("Invalid register: registers must be between R0 and R7!", 1);
+					result.invalid = 1;
+					break;
+				}
+
+				result.opcode = Rd;
+				result.opcode = Rm << 3;
+				result.opcode = 0b0100000101 << 6;
 			}
 			break;
 		case 0xd06e:		// ADD
@@ -462,12 +477,12 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode(char** args) {
 					immOffset = labelOffset.second - PC;
 				}
 				if (immOffset < 0 or immOffset > 1020 or immOffset % 4 != 0) {
-					log("Invalid immediate offset: must be a multiple of 4 in between -2048 and 2046!", 1);
+					log("Invalid immediate offset: must be a multiple of 4 in between 0 and 1020!", 1);
 					result.invalid = 1;
 					return result;
 				}
 
-				result.opcode = immOffset;
+				result.opcode = immOffset >> 2;
 				result.opcode |= Rd << 8;
 				result.opcode |= 0b10100 << 11;
 			}
@@ -719,7 +734,21 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode(char** args) {
 						break;
 					case ltr:
 						{
-							// TODO: labels
+							pair<bool, int> labelOffset = labelOffsetLookup(args[1]);
+							if (!labelOffset.first) {
+								result.invalid = 1;
+								return result;
+							}
+							int immOffset = labelOffset.second - PC;
+							if (immOffset < 0 or immOffset > 1020 or immOffset % 4 != 0) {
+								log("Invalid immediate offset: must be a multiple of 4 in between 0 and 1020!", 1);
+								result.invalid = 1;
+								return result;
+							}
+
+							result.opcode = immOffset >> 2;
+							result.opcode |= Rt << 8;
+							result.opcode |= 0b1001 << 11;
 						}
 						break;
 				}
@@ -1029,7 +1058,59 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode(char** args) {
 			}
 			break;
 		case 0x0562:		// SUBS
-			{}
+			{
+				int Rd = getRegNum(args[1]);
+				int Rn = getRegNum(args[argLen-2]);
+				if (Rd < 0 or Rd > 7 or Rn < 0 or Rn > 7) {
+					log("Invalid register: Rd and Rn must be between R0 and R7!", 1);
+					result.invalid = 1;
+					break;
+				}
+
+				// Immediate
+				if (args[argLen-1][0] == '#') {
+					int imm = strtol(args[argLen-1]+1, NULL, 0);
+
+					// Encoding T1
+					if (imm > -1 and imm < 8) {
+						result.opcode = Rd;
+						result.opcode |= Rn;
+						result.opcode |= imm;
+						result.opcode |= 0b1111 << 9;
+					}
+					// Encoding T2
+					else if (imm > -1 and imm < 256) {
+						if (Rd != Rn) {
+							log("Invalid register: Rd and Rn must be same when immediate value is between 0 and 255!", 1);
+							result.invalid = 1;
+							break;
+						}
+
+						result.opcode = imm;
+						result.opcode |= Rd << 8;
+						result.opcode |= 0b111 << 11;
+					}
+					else {
+						log("Invalid immediate value: must be an integer between 0 and 255!", 1);
+						result.invalid = 1;
+						break;
+					}
+				}
+				// Register
+				else {
+					int Rm = getRegNum(args[argLen-1]);
+					if (Rm < 0 or Rm > 7) {
+						log("Invalid register: Rm must be between R0 and R7!", 1);
+						result.invalid = 1;
+						break;
+					}
+
+					result.opcode = Rd;
+					result.opcode |= Rn << 3;
+					result.opcode |= Rm << 6;
+					result.opcode |= 0b1101 << 9;
+				}
+			}
 			break;
 		case 0x1f51:		// SVC
 			{
@@ -1226,7 +1307,7 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode_branch(char** args, uin
 	// GT 0b1100
 	// LE 0b1101
 	// AL 0b1110
-	result.opcode |= immOffset;
+	result.opcode |= immOffset >> 2;
 	// Encoding T2
 	if (t2)
 		result.opcode |= 0b11100 << 11;
