@@ -37,6 +37,8 @@ class ARMv6_Assembler {
 		uint16_t djb2Hash(string text);
 		// Gets an integer given a string presentation of a register
 		int getRegNum(char* reg);
+		// Get register list given arguments and starting register
+		uint16_t getRegList(char** args, int startArg);
 		// Gets SYSm value given a string representation of a special register
 		uint8_t getSYSm(char* spReg);
 

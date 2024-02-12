@@ -665,7 +665,6 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode(char** args) {
 			break;
 		case 0xff42:		// LDM
 			{
-				// TODO: reglist
 				int Rn = getRegNum(args[1]);
 				if (Rn < 0 or Rn > 7) {
 					log("Invalid register: must be between R0 and R7!", 1);
@@ -673,7 +672,33 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode(char** args) {
 					break;
 				}
 				// Writeback
-				if (args[1][strlen(args[1])-1] == '!') {}
+				bool writeback = 0;
+				if (args[1][strlen(args[1])-1] == '!') {
+					args[1][strlen(args[1])-1] = '\0';
+					writeback = 1;
+				}
+
+				uint16_t register_list = getRegList(args, 2);
+				// No registers in register list
+				if (register_list == 0) {
+					result.invalid = 1;
+					break;
+				}
+				else if (register_list > 0xFF) {
+					log("Invalid registers: register in list must be R0 and R7!", 1);
+					result.invalid = 1;
+					break;
+				}
+
+				if (writeback and (register_list >> Rn) & 1) {
+					log("Invalid writeback: Rn cannot be in list with writeback!", 1);
+					result.invalid = 1;
+					break;
+				}
+
+				result.opcode = register_list;
+				result.opcode |= Rn << 8;
+				result.opcode |= 0b11001 << 11;
 			}
 			break;
 		case 0xff47:		// LDR
@@ -1513,5 +1538,56 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode_popPush(char** args, ui
 	result.opcode |= 0b1011 << 12;
 
 	return result;
+}
+
+
+uint16_t ARMv6_Assembler::getRegList(char** args, int startArg) {
+	uint16_t regList = 0;
+
+	int argLen = strArrLen(args);
+	if (args[startArg][0] != '{' or args[argLen-1][strlen(args[argLen-1])-1] != '}') {
+		log("Invalid instruction: registers must be surrounded by { and }!", 1);
+		return 0;
+	}
+	// Remove '{' and '}' from starting and end argument
+	args[startArg] = (char*)(args[startArg] + 1);
+	args[argLen - 1][strlen(args[argLen-1])-1] = '\0';
+
+	// POP  -> 0-7, PC
+	// PUSH -> 0-7, LR
+	int minReg = 0;
+	int maxReg = 7;
+	for (int i=startArg; i<strArrLen(args); i++) {
+		// Find '-' and assumes is range
+		if (((string)args[i]).find("-")) {
+			char** regRange = strtokSplit(args[i], (char*)"-");
+			int startReg = getRegNum(regRange[0]);
+			int endReg = getRegNum(regRange[1]);
+			if (strArrLen(regRange) != 2 or startReg > endReg) {
+				log("Invalid register range: please supply range in format of Rn-Rm where n < m!", 1);
+				return 0;
+			}
+			if (startReg < 0 or endReg > 7) {
+				log("Invalid register range: must be between R0 and R7!", 1);
+				return 0;
+			}
+
+			for (int j=startReg; j<endReg; j++) {
+				regList |= 1 << j;
+			}
+		}
+		// No '-' found in argument, assume to not be range
+		else {
+			int reg = getRegNum(args[i]);
+			if (reg < 0 or reg > 15) {
+				log("Invalid register: must be a valid register!", 1);
+				return 0;
+			}
+
+			regList |= 1 << reg;
+		}
+	}
+
+	return regList;
 }
 
