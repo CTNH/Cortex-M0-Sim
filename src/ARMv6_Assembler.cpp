@@ -1491,60 +1491,27 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode_barrier(char** args, ui
 ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode_popPush(char** args, uint8_t opcodePrefix, char* extraReg) {
 	OpcodeResult result = {};
 
-	int argLen = strArrLen(args);
-	// Null terminate last character of last argument to remove '}'
-	if (args[argLen - 1][strlen(args[argLen-1])-1]) {
-		log("Invalid instruction: registers must be surrounded by { and }!", 1);
+	// POP  -> 0-7, PC
+	// PUSH -> 0-7, LR
+	uint16_t register_list = getRegList(args, 1);
+	if (register_list == 0) {
 		result.invalid = 1;
 		return result;
 	}
-	args[argLen - 1][strlen(args[argLen-1])-1] = '\0';
-
-	// POP  -> 0-7, PC
-	// PUSH -> 0-7, LR
-	int minReg = 0;
-	int maxReg = 7;
-
-	for (int i=1; i<strArrLen(args); i++) {
-		// Find '-' and assumes is range
-		if (((string)args[i]).find("-")) {
-			char** regRange = strtokSplit(args[i], (char*)"-");
-			int startReg = getRegNum(regRange[0]);
-			int endReg = getRegNum(regRange[1]);
-			if (strArrLen(regRange) != 2 or startReg > endReg) {
-				log("Invalid register range: please supply range in format of Rn-Rm where n < m!", 1);
-				result.invalid = 1;
-				return result;
-			}
-
-			if (startReg < minReg or endReg > maxReg) {
-				log("Invalid register range: must be between R0 and R7!", 1);
-				result.invalid = 1;
-				return result;
-			}
-
-			for (int j=startReg; j<endReg; j++) {
-				result.opcode |= 1 << j;
-			}
-		}
-		// No '-' found in argument, assume to not be range
-		else {
-			int reg = getRegNum(args[i]);
-			if (reg < minReg or (reg > maxReg and reg != getRegNum(extraReg))) {
-				log("Invalid register range: must be "s + extraReg + " or between R0 and R7!", 1);
-				result.invalid = 1;
-				return result;
-			}
-
-			if (reg != getRegNum(extraReg))
-				result.opcode |= 1 << reg;
-			else
-				result.opcode |= 1 << 8;
-		}
+	// Only allow R0-R7 and extra register
+	uint16_t validReg = 0xFF | (1 << getRegNum(extraReg));
+	if (register_list & (uint16_t)~validReg) {
+		log("Invalid register range: must be "s + extraReg + " or between R0 and R7!", 1);
+		result.invalid = 1;
+		return result;
 	}
 
 	// POP   1011 1 10 P register_list
 	// PUSH  1011 0 10 M register_list
+	result.opcode = register_list & 0xFF;
+	if (register_list & (1<<getRegNum(extraReg))) {
+		result.opcode |= 1 << 8;
+	}
 	result.opcode |= 0b10 << 9;
 	result.opcode |= opcodePrefix << 11;
 	result.opcode |= 0b1011 << 12;
@@ -1565,10 +1532,6 @@ uint16_t ARMv6_Assembler::getRegList(char** args, int startArg) {
 	args[startArg] = (char*)(args[startArg] + 1);
 	args[argLen - 1][strlen(args[argLen-1])-1] = '\0';
 
-	// POP  -> 0-7, PC
-	// PUSH -> 0-7, LR
-	int minReg = 0;
-	int maxReg = 7;
 	for (int i=startArg; i<strArrLen(args); i++) {
 		// Find '-' and assumes is range
 		if (((string)args[i]).find("-")) {
