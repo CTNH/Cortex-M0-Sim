@@ -88,11 +88,14 @@ bool ARMv6_Assembler::hashUniqueCheck() {
 		"CMP",
 		"CPSID",
 		"CPSIE",
+		"CPY",
 		"DMB",
 		"DSB",
 		"EORS",
 		"ISB",
 		"LDM",
+		"LDMIA",
+		"LDMFD",
 		"LDR",
 		"LDRB",
 		"LDRH",
@@ -118,6 +121,8 @@ bool ARMv6_Assembler::hashUniqueCheck() {
 		"SBCS",
 		"SEV",
 		"STM",
+		"STMIA",
+		"STMEA",
 		"STR",
 		"STRB",
 		"STRH",
@@ -127,10 +132,12 @@ bool ARMv6_Assembler::hashUniqueCheck() {
 		"SXTB",
 		"SXTH",
 		"TST",
+		"UDF",
 		"UXTB",
 		"UXTH",
 		"WFE",
-		"WFI"
+		"WFI",
+		"YIELD"
 	};
 
 	int instructionSetSize = sizeof(instructionSet)/sizeof(string);
@@ -138,7 +145,7 @@ bool ARMv6_Assembler::hashUniqueCheck() {
 	uint16_t hash[instructionSetSize];
 	for (int i=0; i<instructionSetSize; i++) {
 		hash[i] = djb2Hash(instructionSet[i]);
-		printf("%04x\n",hash[i]);
+		printf("%04x   %s\n", hash[i], instructionSet[i].c_str());
 	}
 	// Sort hash values
 	sort(hash, hash+instructionSetSize);
@@ -150,6 +157,7 @@ bool ARMv6_Assembler::hashUniqueCheck() {
 		}
 	}
 
+	cout << "Collisions: " << collision << endl;
 	return ~collision;
 };
 
@@ -679,6 +687,8 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode(char** args) {
 			result = genOpcode_barrier(args, 0b0110);
 			break;
 		case 0xff42:		// LDM
+		case 0xe16c:		// LDMIA
+		case 0xe10c:		// LDMFD
 			result = genOpcode_loadStoreMulReg(args, 1);
 			break;
 		case 0xff47:		// LDR
@@ -724,7 +734,6 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode(char** args) {
 						itype = reg;
 				}
 
-				// TODO: remove ']' from last arg if exist
 				switch (itype) {
 					case imm:
 						result = genOpcode_loadStoreImm(args, 0b01101);
@@ -734,12 +743,18 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode(char** args) {
 						break;
 					case ltr:
 						{
-							pair<bool, int> labelOffset = labelOffsetLookup(args[1]);
-							if (!labelOffset.first) {
-								result.invalid = 1;
-								return result;
+							int immOffset;
+							if ((string)args[1] == "[PC") {
+								immOffset = strtol(args[2]+1, NULL, 0);
 							}
-							int immOffset = labelOffset.second - PC;
+							else {
+								pair<bool, int> labelOffset = labelOffsetLookup(args[1]);
+								if (!labelOffset.first) {
+									result.invalid = 1;
+									break;
+								}
+								immOffset = labelOffset.second - PC;
+							}
 							if (immOffset < 0 or immOffset > 1020 or immOffset % 4 != 0) {
 								log("Invalid immediate offset: must be a multiple of 4 in between 0 and 1020!", 1);
 								result.invalid = 1;
@@ -786,6 +801,7 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode(char** args) {
 		case 0x2849:		// LSRS
 			result = genOpcode_bitShift(args, 0b01, 0b0011);
 			break;
+		case 0xda91:		// CPY (Pre-UAL synonym)
 		case 0x04f7:		// MOV
 			{
 				// Register Only
@@ -883,10 +899,10 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode(char** args) {
 			break;
 		case 0xbc66:		// MULS
 			{
-				// TODO: Rd can be omitted when d==n==m
 				int Rd = getRegNum(args[1]);
-				int Rn = getRegNum(args[2]);
-				int Rm = getRegNum(args[3]);
+				int Rn = getRegNum(args[argLen-2]);
+				int Rm = getRegNum(args[argLen-1]);
+				// When Rd is omitted, Rd will be Rn in above
 				if (Rd != Rm) {
 					log("Invalid registers: Rd and Rm must be the same!", 1);
 					result.invalid = 1;
@@ -1004,6 +1020,8 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode(char** args) {
 			result.opcode = 0b1011111101000000;
 			break;
 		case 0x1f19:		// STM
+		case 0x5303:		// STMIA
+		case 0x527f:		// STMEA
 			genOpcode_loadStoreMulReg(args, 0);
 			break;
 		case 0x1f1e:		// STR
@@ -1145,6 +1163,19 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode(char** args) {
 				result.opcode |= 0b0100001000 << 6;
 			}
 			break;
+		case 0x2584:		// UDF
+			{
+				int imm = strtol(args[argLen-1]+1, NULL, 0);
+				if (imm < 0 or imm > 0xFF) {
+					log("Invalid immediate value: must be an 8-bit value!", 1);
+					result.invalid = 1;
+					break;
+				}
+
+				result.opcode = imm;
+				result.opcode |= 0b11011110 << 8;
+			}
+			break;
 		case 0x2d28:		// UXTB
 			result = genOpcode_extendRegister(args, 0b11);
 			break;
@@ -1156,6 +1187,9 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode(char** args) {
 			break;
 		case 0x2e4b:		// WFI
 			result.opcode = 0b1011111100110000;
+			break;
+		case 0xbc3c:		// YIELD
+			result.opcode = 0b1011111100010000;
 			break;
 
 		default:
