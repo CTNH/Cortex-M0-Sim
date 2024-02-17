@@ -186,7 +186,7 @@ char* strReplace(char* str, char* old, char* replacement, int count) {
         count = pos[0];
     }
     
-    char* out = malloc((strlen(str) + count*(strlen(replacement) - strlen(old))) * sizeof(char));
+    char* out = malloc((strlen(str) + count*(strlen(replacement) - strlen(old)) + 1) * sizeof(char));
 
     int idx = 0;
     int outIdx = 0;
@@ -205,6 +205,7 @@ char* strReplace(char* str, char* old, char* replacement, int count) {
         out[outIdx] = str[j];
         outIdx++;
     }
+	out[outIdx] = '\0';
     
     return out;
 }

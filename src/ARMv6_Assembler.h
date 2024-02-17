@@ -83,7 +83,7 @@ class ARMv6_Assembler {
 		// ====
 	public:
 		// Class Constructor
-		ARMv6_Assembler();
+		ARMv6_Assembler(string asmFilePath);
 		// Checks if all hashes are unique
 		bool hashUniqueCheck();
 		// Generate an opcode given a string instruction

@@ -3,6 +3,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <cctype>
 #include <ctype.h>			// For toupper() / tolower()
 #include <bits/stdc++.h>	// For sort()
 #include <iterator>
@@ -14,10 +15,36 @@ extern "C" {
 }
 
 
-ARMv6_Assembler::ARMv6_Assembler() {
-	vector<char**> instArgs = cleanInstructions(readASMFile("test.m"));
-	for (int i=0; i<instArgs.size(); i++) {
-		genOpcode(instArgs.at(i));
+ARMv6_Assembler::ARMv6_Assembler(string asmFilePath) {
+	vector<string> asmLines = readASMFile(asmFilePath);
+	// vector<char**> instArgs;
+
+	for (int i=0; i<asmLines.size(); i++) {
+		// Remove starting spaces and tabs
+		if (asmLines.at(i).find_first_not_of(" \t") != string::npos)
+			asmLines.at(i).erase(0, asmLines.at(i).find_first_not_of(" \t"));
+
+		// Remove comments
+		if (asmLines.at(i).find(";") != -1) {
+			asmLines.at(i).erase(asmLines.at(i).find(";"));
+		}
+
+		string line = strReplace(&asmLines.at(i)[0], (char*)"\t", (char*)" ", -1);
+		line += "\0";
+
+		// Separate instruction into arguments list by ' ' or ','
+		char** args = strtokSplit(&asmLines.at(i)[0], (char*)" ,\t");
+		// If no elements in array skip
+		if (strArrLen(args) == 0)
+			continue;
+
+		// instArgs.push_back(args);
+		OpcodeResult result = genOpcode(args);
+		if (!result.invalid) {
+			printf("[0x%X] opcode generated from:  ", result.opcode);
+			//cout << asmLines.at(i) << endl;
+			cout << line << endl;
+		}
 	}
 }
 
@@ -164,24 +191,29 @@ bool ARMv6_Assembler::hashUniqueCheck() {
 
 int ARMv6_Assembler::getRegNum(char* reg) {
 	// Assumes input is in format of "Rn" where n is 0-15
-	int out = strtol(reg, NULL, 0);
-	switch (out) {
-		case 1 ... 15:
-			return out;
-		case 0:
-			if (strcmp(reg, "R0") == 0)
-				return 0;
-			else if (strcmp(reg, "SP") == 0)
-				return 13;
-			else if (strcmp(reg, "LR") == 0)
-				return 14;
-			else if (strcmp(reg, "PC") == 0)
-				return 15;
-			// Invalid Register
-			else
-		default:
-				return -1;
+	if (strlen(reg) < 2)
+		return -1;
+	// Convert to upper case
+	string capReg = "";
+	for (int i=0; i<strlen(reg); i++) {
+		capReg += toupper(reg[i]);
 	}
+
+	if (capReg[0] == 'R') {
+		int out = strtol(reg+1, NULL, 0);
+		if (out > 0 and out < 16)
+			return out;
+		if (capReg == "R0")
+			return 0;
+		return -1;
+	}
+	if (capReg == "SP")
+		return 13;
+	if (capReg == "LR")
+		return 14;
+	if (capReg == "PC")
+		return 15;
+	return -1;
 }
 
 uint8_t ARMv6_Assembler::getSYSm(char* spReg) {
@@ -227,7 +259,7 @@ pair<bool, int> ARMv6_Assembler::labelOffsetLookup(string label) {
 	// Invalid
 	if (labels.find(label) == labels.end()) {
 	// if (~out.first) {
-		log("Invalid label: no label with name "s + label + "found!", 1);
+		log("Invalid label: no label with name \""s + label + "\" found!", 1);
 		out.first = false;
 		return out;
 	}
@@ -235,29 +267,6 @@ pair<bool, int> ARMv6_Assembler::labelOffsetLookup(string label) {
 	out.second = labels.find(label) -> second;
 
 	return out;
-}
-
-vector<char**> ARMv6_Assembler::cleanInstructions(vector<string> lines) {
-	vector<char**> instructions;
-	for (int i=0; i<lines.size(); i++) {
-		// Remove starting spaces and tabs
-		if (lines.at(i).find_first_not_of(" \t") != string::npos)
-			lines.at(i).erase(0, lines.at(i).find_first_not_of(" \t"));
-
-		// Remove comments
-		if (lines.at(i).find(";") != -1) {
-			lines.at(i).erase(lines.at(i).find(";"));
-		}
-
-		// Separate instruction into arguments list by ' ' or ','
-		char** args = strtokSplit(&lines.at(i)[0], (char*)" ,");
-		// If no elements in array skip
-		if (strArrLen(args) == 0)
-			continue;
-
-		instructions.push_back(args);
-	}
-	return instructions;
 }
 
 void ARMv6_Assembler::log(string msg, int msgLvl) {
@@ -296,10 +305,34 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode(char** args) {
 		args++;		// Remove first argument
 		argLen--;
 	}
+	else {
+		switch (args[0][0]) {
+			case '.':
+				{
+					if ((string)args[0] == ".align") {}
+					else {}
+				}
+				break;
+			case '@':
+			default:
+				{
+					// Ignore the line
+					result.invalid = 1;
+					return result;
+				}
+				break;
+		}
+	}
+	/*
 	// If first argument starts with '.'
 	else if (args[0][0] == '.') {
-		// TODO
 	}
+	else if (args[0][0] == '@') {
+		// Ignore the line
+		result.invalid = 1;
+		return result;
+	}
+	*/
 
 	switch (djb2Hash(args[0])) {
 		case 0xde60:		// ADCS
@@ -1193,7 +1226,7 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode(char** args) {
 			break;
 
 		default:
-			log("Invalid instruction: instruction not found!", 1);
+			log("Invalid instruction: instruction "s + args[0] + " not found!", 1);
 			result.invalid = 1;
 			break;
 	}
@@ -1649,7 +1682,7 @@ uint16_t ARMv6_Assembler::getRegList(char** args, int startArg) {
 
 	for (int i=startArg; i<strArrLen(args); i++) {
 		// Find '-' and assumes is range
-		if (((string)args[i]).find("-")) {
+		if (((string)args[i]).find("-") != string::npos) {
 			char** regRange = strtokSplit(args[i], (char*)"-");
 			int startReg = getRegNum(regRange[0]);
 			int endReg = getRegNum(regRange[1]);
