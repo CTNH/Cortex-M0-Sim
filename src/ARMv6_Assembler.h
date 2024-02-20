@@ -16,6 +16,8 @@ class ARMv6_Assembler {
 			bool invalid;		// True to invalidate all other struct members
 			uint32_t opcode;
 			bool i32;			// True for 32-bits instruction, False for 16-bits
+			bool label;			// True if line includes a label
+			bool unsupported;	// True if instruction is not implemented here
 		};
 
 	private:
@@ -87,7 +89,7 @@ class ARMv6_Assembler {
 		// Checks if all hashes are unique
 		bool hashUniqueCheck();
 		// Generate an opcode given a string instruction
-		OpcodeResult genOpcode(char** args);		
+		OpcodeResult genOpcode(char** args, bool labelOnly);
 		//uint16_t genOpcode(string instruction);		
 };
 

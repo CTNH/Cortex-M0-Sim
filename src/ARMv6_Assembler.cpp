@@ -17,7 +17,8 @@ extern "C" {
 
 ARMv6_Assembler::ARMv6_Assembler(string asmFilePath) {
 	vector<string> asmLines = readASMFile(asmFilePath);
-	// vector<char**> instArgs;
+	vector<char**> instArgs;
+	vector<string> parsedLine;
 
 	for (int i=0; i<asmLines.size(); i++) {
 		// Remove starting spaces and tabs
@@ -29,8 +30,10 @@ ARMv6_Assembler::ARMv6_Assembler(string asmFilePath) {
 			asmLines.at(i).erase(asmLines.at(i).find(";"));
 		}
 
+		// Add parsed line to list for logging later
 		string line = strReplace(&asmLines.at(i)[0], (char*)"\t", (char*)" ", -1);
 		line += "\0";
+		parsedLine.push_back(line);
 
 		// Separate instruction into arguments list by ' ' or ','
 		char** args = strtokSplit(&asmLines.at(i)[0], (char*)" ,\t");
@@ -38,12 +41,31 @@ ARMv6_Assembler::ARMv6_Assembler(string asmFilePath) {
 		if (strArrLen(args) == 0)
 			continue;
 
-		// instArgs.push_back(args);
-		OpcodeResult result = genOpcode(args);
-		if (!result.invalid) {
+		// Add parsed arguments to vector
+		instArgs.push_back(args);
+
+		OpcodeResult result = genOpcode(args, true);
+	}
+	PC = INST_BASEADDR;		// Reset PC
+	cout << "==== Finished Parsing ====" << endl;
+	for (int i=0; i<instArgs.size(); i++) {
+		OpcodeResult result = genOpcode(instArgs.at(i), false);
+		if (!result.invalid and !result.unsupported) {
 			printf("[0x%X] opcode generated from:  ", result.opcode);
 			//cout << asmLines.at(i) << endl;
-			cout << line << endl;
+			cout << parsedLine.at(i) << endl;
+		}
+		else if (result.unsupported) {
+			cout << "Unsupported instruction; Ignoring  ";
+			cout << parsedLine.at(i) << endl;
+		}
+		// Do nothing on label
+		else if (result.label) {
+			cout << "Label found; Ignoring  ";
+			cout << parsedLine.at(i) << endl;
+		}
+		else {
+			cout << "Error parsing instruction: " << parsedLine.at(i) << endl;
 		}
 	}
 }
@@ -194,10 +216,7 @@ int ARMv6_Assembler::getRegNum(char* reg) {
 	if (strlen(reg) < 2)
 		return -1;
 	// Convert to upper case
-	string capReg = "";
-	for (int i=0; i<strlen(reg); i++) {
-		capReg += toupper(reg[i]);
-	}
+	string capReg = upString(reg);
 
 	if (capReg[0] == 'R') {
 		int out = strtol(reg+1, NULL, 0);
@@ -240,6 +259,9 @@ uint8_t ARMv6_Assembler::getSYSm(char* spReg) {
 
 
 bool ARMv6_Assembler::addLabel(string label) {
+	// Remove ':' from label
+	label.pop_back();
+
 	if (labels.find(label) != labels.end()) {
 		log("Invalid label: label already exists!", 1);
 		return 0;
@@ -256,9 +278,8 @@ pair<bool, int> ARMv6_Assembler::labelOffsetLookup(string label) {
 	// Integer -> immediate offset of label
 	pair<bool, uint32_t> out(1, 0);
 
-	// Invalid
+	// No label found
 	if (labels.find(label) == labels.end()) {
-	// if (~out.first) {
 		log("Invalid label: no label with name \""s + label + "\" found!", 1);
 		out.first = false;
 		return out;
@@ -271,7 +292,7 @@ pair<bool, int> ARMv6_Assembler::labelOffsetLookup(string label) {
 
 void ARMv6_Assembler::log(string msg, int msgLvl) {
 	if (msgLvl >= logLvl)
-		cout << msg << endl;
+		cout << "-->  " << msg << endl;
 }
 
 void ARMv6_Assembler::log16bitOpcode(string instruction, uint16_t opcode) {
@@ -287,14 +308,18 @@ void ARMv6_Assembler::log16bitOpcode(string instruction, uint16_t opcode) {
 	log((string)buf, 3);
 }
 
-ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode(char** args) {
-//uint16_t ARMv6_Assembler::genOpcode(string instruction) {
+ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode(char** args, bool labelOnly) {
 	int argLen = strArrLen(args);
 	OpcodeResult result = {};
-	
+
 	// Label; if first argument ends with ':'
 	if (args[0][strlen(args[0])-1] == ':') {
-		addLabel(args[0]);
+		// Only add label if flag is true
+		if (labelOnly) {
+			addLabel(args[0]);
+		}
+
+		result.label = 1;
 		// If only label exists on line
 		if (argLen - 1 == 0) {
 			// Invalidate opcode
@@ -309,17 +334,69 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode(char** args) {
 		switch (args[0][0]) {
 			case '.':
 				{
-					if ((string)args[0] == ".align") {}
-					else {}
+					/*
+					vector<string> tmp = {
+						".align",
+						".eabi_attribute",
+						".cpu",
+						".fpu",
+						".arch",
+						".file",
+						".text",
+						".section",
+						".ident",
+						".word",
+						".ascii",
+						".p2align",
+						".global",
+						".syntax",
+						".code",
+						".thumb_func",
+						".type",
+						".size"
+					};
+					for (auto s = tmp.begin(); s != tmp.end(); s++) {
+						printf("case 0x%x: \t// ", djb2Hash(*s));
+						cout << *s << endl;
+					}
+					*/
+					
+					switch(djb2Hash(args[0])) {
+						case 0x773e:	// .align
+						case 0x9b77:	// .eabi_attribute
+						case 0x709b:	// .cpu
+						case 0x7d5e:	// .fpu
+						case 0x71b1:	// .arch
+						case 0x0a73:	// .file
+						case 0xa858:	// .text
+						case 0xeb08:	// .section
+						case 0xc827:	// .ident
+						case 0x772f:	// .word
+						case 0x349c:    // .ascii
+						case 0x9bc0:    // .p2align
+						case 0x8664:    // .global
+						case 0x6cba:    // .syntax
+						case 0x7dce:    // .code
+						case 0x1d3e:    // .thumb_func
+						case 0xfc55:    // .type
+						case 0x2d2e:    // .size
+							result.unsupported = 1;
+							return result;
+						default:
+							cout << "Dot instruction unknown." << endl;
+							result.invalid = 1;
+							return result;
+					}
 				}
 				break;
 			case '@':
-			default:
 				{
 					// Ignore the line
-					result.invalid = 1;
+					result.unsupported = 1;
 					return result;
 				}
+				break;
+			default:
 				break;
 		}
 	}
@@ -333,6 +410,9 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode(char** args) {
 		return result;
 	}
 	*/
+
+	// Capitalize first argument
+	args[0] = upString(args[0]);
 
 	switch (djb2Hash(args[0])) {
 		case 0xde60:		// ADCS
@@ -777,11 +857,11 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode(char** args) {
 					case ltr:
 						{
 							int immOffset;
-							if ((string)args[1] == "[PC") {
+							if ((string)args[2] == "[PC") {
 								immOffset = strtol(args[2]+1, NULL, 0);
 							}
 							else {
-								pair<bool, int> labelOffset = labelOffsetLookup(args[1]);
+								pair<bool, int> labelOffset = labelOffsetLookup(args[2]);
 								if (!labelOffset.first) {
 									result.invalid = 1;
 									break;
@@ -1676,14 +1756,23 @@ uint16_t ARMv6_Assembler::getRegList(char** args, int startArg) {
 		log("Invalid instruction: registers must be surrounded by { and }!", 1);
 		return 0;
 	}
-	// Remove '{' and '}' from starting and end argument
-	args[startArg] = (char*)(args[startArg] + 1);
-	args[argLen - 1][strlen(args[argLen-1])-1] = '\0';
 
+	// Creates copy of args to avoid changes to original
+	char** argsCopy = (char**)malloc(sizeof(char*) * argLen);
 	for (int i=startArg; i<strArrLen(args); i++) {
+		// Copy each string including null terminator
+		argsCopy[i] = (char*) malloc(sizeof(char) * (strlen(args[i]) + 1));
+		memcpy(argsCopy[i], args[i], sizeof(char) * (strlen(args[i]) + 1));
+	}
+
+	// Remove '{' and '}' from starting and end argument
+	argsCopy[startArg] = (char*)(argsCopy[startArg] + 1);
+	argsCopy[argLen - 1][strlen(argsCopy[argLen-1])-1] = '\0';
+
+	for (int i=startArg; i<argLen; i++) {
 		// Find '-' and assumes is range
-		if (((string)args[i]).find("-") != string::npos) {
-			char** regRange = strtokSplit(args[i], (char*)"-");
+		if (((string)argsCopy[i]).find("-") != string::npos) {
+			char** regRange = strtokSplit(argsCopy[i], (char*)"-");
 			int startReg = getRegNum(regRange[0]);
 			int endReg = getRegNum(regRange[1]);
 			if (strArrLen(regRange) != 2 or startReg > endReg) {
@@ -1701,7 +1790,7 @@ uint16_t ARMv6_Assembler::getRegList(char** args, int startArg) {
 		}
 		// No '-' found in argument, assume to not be range
 		else {
-			int reg = getRegNum(args[i]);
+			int reg = getRegNum(argsCopy[i]);
 			if (reg < 0 or reg > 15) {
 				log("Invalid register: must be a valid register!", 1);
 				return 0;

@@ -1,4 +1,5 @@
 // Assumes all string arrays passed into functions ends with -1
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>     // For malloc, realloc, calloc
 #include <string.h>     // For strlen, strtok, strstr, strcat
@@ -235,5 +236,14 @@ int strArrLen(char **strArr) {
 		length++;
 	}
 	return length;
+}
+
+char* upString(char* str) {
+	char* out = malloc((strlen(str)+1) * sizeof(char));
+	for (int i=0; i<strlen(str); i++) {
+		out[i] = toupper(str[i]);
+	}
+	out[strlen(str)] = '\0';
+	return out;
 }
 

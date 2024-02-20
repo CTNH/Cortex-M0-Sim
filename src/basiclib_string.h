@@ -13,5 +13,6 @@ extern int* strOverlapFind(char* str, char* substr);
 extern char* strReplace(char* str, char* old, char* replacement, int count);
 extern int strtoint(char* str);
 extern int strArrLen(char** strArr);
+extern char* upString(char* str);
 
 #endif
