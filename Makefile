@@ -17,7 +17,10 @@ all:
 
 debug:
 	mkdir -p $(BIN_DIR)
-	gcc -g -lm -Wall $(SRC_DIR)*.c -o $(BIN_DIR)pico_emu
+	#gcc -g -lm -Wall $(SRC_DIR)*.c -o $(BIN_DIR)pico_emu
+	g++ -g -c -Wall $(SRC_DIR)*.cpp
+	gcc -g -c -Wall $(SRC_DIR)*.c
+	g++ -g -lm -Wall -o $(BIN_DIR)pico_emu *.o
 
 # Produce object files
 build:
@@ -29,5 +32,5 @@ asm:
 	gcc -Wall -S -fverbose-asm $(SRC_DIR)*.c
 
 clean:
-	rm *.o *.s
+	rm *.o
 
