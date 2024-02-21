@@ -2,6 +2,7 @@
 #define CORTEXM0P_CORE_H
 
 #include "cortex-m0p_memory.h"
+#include "ARMv6_Assembler.h"
 #include <cstdint>
 #include <string>
 
@@ -21,16 +22,19 @@ class CM0P_Core {
 
 		uint32_t		stack[40];
 
+		const uint32_t INST_BASEADDR = 0;	// Set base address of an instruction
+
 		CM0P_Memory memory;
 
 		uint32_t update_flag_addition(uint32_t a, uint32_t b);
 		uint32_t update_flag_subtraction(uint32_t a, uint32_t b);
 		void stackPush(uint32_t data);
 	public:
-		CM0P_Core();			// Constructor
+		CM0P_Core(vector<ARMv6_Assembler::OpcodeResult>);		// Constructor
 		bool get_flag(char flag);
 		void update_flag(char flag, bool bit);
 		void step_inst();		// Run instruction in memory
+		uint32_t* getCoreRegisters();		// Returns R
 };
 
 #endif

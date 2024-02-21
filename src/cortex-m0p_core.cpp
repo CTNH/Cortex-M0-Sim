@@ -1,9 +1,19 @@
 #include "cortex-m0p_core.h"
 
-CM0P_Core::CM0P_Core() {
+CM0P_Core::CM0P_Core(vector<ARMv6_Assembler::OpcodeResult> opcodes) {
 	// Initialize registers
 	for (int i=0; i<16; i++) {
 		R[i] = 0;
+	}
+
+	// Write opcodes into memory
+	for (auto &it: opcodes) {
+		if (it.i32) {
+			memory.write_word(INST_BASEADDR, it.opcode);
+		}
+		else {
+			memory.write_halfword(INST_BASEADDR, it.opcode);
+		}
 	}
 }
 
@@ -967,5 +977,13 @@ void CM0P_Core::step_inst() {
 			}
 			break;
 	}
+}
+
+uint32_t* CM0P_Core::getCoreRegisters() {
+	uint32_t* out = (uint32_t*)malloc(sizeof(uint32_t) * 16);
+	for (int i=0; i<16; i++) {
+		out[i] = R[i];
+	}
+	return out;
 }
 
