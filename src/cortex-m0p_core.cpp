@@ -1,6 +1,11 @@
 #include "cortex-m0p_core.h"
 
-CM0P_Core::CM0P_Core() {}
+CM0P_Core::CM0P_Core() {
+	// Initialize registers
+	for (int i=0; i<16; i++) {
+		R[i] = 0;
+	}
+}
 
 uint32_t CM0P_Core::update_flag_addition(uint32_t a, uint32_t b) {
 	uint32_t result = a + b;
@@ -712,7 +717,7 @@ void CM0P_Core::step_inst() {
 						for (int i=0; i<8; i++) {
 							// Check if bit is set
 							if (register_list >> i & 1) {
-								stackPush(R[i+1]);
+								// stackPush(R[i+1]);
 								// TODO
 							}
 						}
@@ -850,7 +855,7 @@ void CM0P_Core::step_inst() {
 								// NE - Not Equal
 								case 0b0001:
 									{
-										if (~get_flag('Z'))
+										if (!get_flag('Z'))
 											condMet = 1;
 									}
 									break;
@@ -864,7 +869,7 @@ void CM0P_Core::step_inst() {
 								// CC - Carry Clear
 								case 0b0011:
 									{
-										if (~get_flag('C'))
+										if (!get_flag('C'))
 											condMet = 1;
 									}
 									break;
@@ -877,7 +882,7 @@ void CM0P_Core::step_inst() {
 									break;
 								// PL - Plus, Positive or Zero
 								case 0b0101:
-										if (~get_flag('N'))
+										if (!get_flag('N'))
 											condMet = 1;
 									break;
 								// VS - Overflow
@@ -890,21 +895,21 @@ void CM0P_Core::step_inst() {
 								// VC - No Overflow
 								case 0b0111:
 									{
-										if (~get_flag('V'))
+										if (!get_flag('V'))
 											condMet = 1;
 									}
 									break;
 								// HI - Unsigned Higher
 								case 0b1000:
 									{
-										if(get_flag('C') && ~get_flag('Z'))
+										if(get_flag('C') && !get_flag('Z'))
 											condMet = 1;
 									}
 									break;
 								// LS - Unsigned Lower or Same
 								case 0b1001:
 									{
-										if(~get_flag('C') && get_flag('Z'))
+										if(!get_flag('C') && get_flag('Z'))
 											condMet = 1;
 									}
 									break;
@@ -925,7 +930,7 @@ void CM0P_Core::step_inst() {
 								// GT - Signed Greater Than
 								case 0b1100:
 									{
-										if(~get_flag('Z') && (get_flag('N') == get_flag('V')))
+										if(!get_flag('Z') && (get_flag('N') == get_flag('V')))
 											condMet = 1;
 									}
 									break;

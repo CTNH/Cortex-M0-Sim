@@ -28,7 +28,7 @@ asm:
 	g++ -Wall -S -fverbose-asm $(SRC_DIR)*.cpp
 
 clean:
-	rm *.o *.s
+	rm *.o
 
 run:
 	$(BIN_DIR)$(BIN_NAME)
