@@ -13,7 +13,7 @@ default_target: all clean
 all:
 	mkdir -p $(BIN_DIR)
 	@$(MAKE) build
-	g++ -lm -Wall -o $(BIN_DIR)pico_emu *.o
+	g++ -lm -Wall -o $(BIN_DIR)$(BIN_NAME) *.o
 	# gcc -lm -Wall -o $(BIN_DIR)pico_emu *.o
 #gcc -Wall $(SRC_DIR)*.c -o $(BIN_DIR)pico_emu
 
@@ -22,7 +22,7 @@ debug:
 	#gcc -g -lm -Wall $(SRC_DIR)*.c -o $(BIN_DIR)pico_emu
 	g++ -g -c -Wall $(SRC_DIR)*.cpp
 	gcc -g -c -Wall $(SRC_DIR)*.c
-	g++ -g -lm -Wall -o $(BIN_DIR)pico_emu *.o
+	g++ -g -lm -Wall -o $(BIN_DIR)$(BIN_NAME) *.o
 
 # Produce object files
 build:
@@ -31,6 +31,7 @@ build:
 
 # Produce assembly files
 asm:
+	g++ -Wall -S -fverbose-asm $(SRC_DIR)*.cpp
 	gcc -Wall -S -fverbose-asm $(SRC_DIR)*.c
 
 clean:
