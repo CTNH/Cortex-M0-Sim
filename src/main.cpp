@@ -3,9 +3,12 @@
 #include "basiclib_string.h"
 
 int main (int argc, char *argv[]) {
-	ARMv6_Assembler assembler;
+	ARMv6_Assembler assembler("main.c.s");
 	// assembler.hashUniqueCheck();
+	cout << endl << endl;
+	assembler.getFinalResult();
 
+	/*
 	string inst = "ADDS 5,1, #7";
 	char** instArgs = strtokSplit(&inst[0], (char*)" ,");
 
@@ -18,4 +21,5 @@ int main (int argc, char *argv[]) {
 	printf("%016b\n", opcode.opcode);
 	
 	return 0;
+	*/
 }

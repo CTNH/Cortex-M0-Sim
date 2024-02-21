@@ -20,6 +20,8 @@ ARMv6_Assembler::ARMv6_Assembler(string asmFilePath) {
 	vector<char**> instArgs;
 	vector<string> parsedLine;
 
+	PC = INST_BASEADDR;		// Reset PC
+
 	for (int i=0; i<asmLines.size(); i++) {
 		// Remove starting spaces and tabs
 		if (asmLines.at(i).find_first_not_of(" \t") != string::npos)
@@ -54,6 +56,9 @@ ARMv6_Assembler::ARMv6_Assembler(string asmFilePath) {
 			printf("[0x%X] opcode generated from:  ", result.opcode);
 			//cout << asmLines.at(i) << endl;
 			cout << parsedLine.at(i) << endl;
+
+			pair<string, OpcodeResult> opcodePair(parsedLine.at(i), result);
+			finalOpcodes.push_back(opcodePair);
 		}
 		else if (result.unsupported) {
 			cout << "Unsupported instruction; Ignoring  ";
@@ -67,6 +72,15 @@ ARMv6_Assembler::ARMv6_Assembler(string asmFilePath) {
 		else {
 			cout << "Error parsing instruction: " << parsedLine.at(i) << endl;
 		}
+	}
+}
+
+void ARMv6_Assembler::getFinalResult() {
+	for (auto &it: finalOpcodes) {
+		if (it.second.i32)
+			printf("%08x\t%s\n", it.second.opcode, it.first.c_str());
+		else
+			printf("%04x\t%s\n", it.second.opcode, it.first.c_str());
 	}
 }
 

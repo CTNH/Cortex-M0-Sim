@@ -32,6 +32,9 @@ class ARMv6_Assembler {
 		// vector<string> labels;
 		unordered_map<string, uint32_t> labels;
 
+		// Vector to store final output from input opcodes
+		vector<pair<string, OpcodeResult>> finalOpcodes;
+
 		// Reads all lines from an assembly file
 		vector<string> readASMFile(string fpath);
 
@@ -91,6 +94,8 @@ class ARMv6_Assembler {
 		// Generate an opcode given a string instruction
 		OpcodeResult genOpcode(char** args, bool labelOnly);
 		//uint16_t genOpcode(string instruction);		
+
+		void getFinalResult();
 };
 
 #endif
