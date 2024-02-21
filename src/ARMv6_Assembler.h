@@ -95,7 +95,7 @@ class ARMv6_Assembler {
 		OpcodeResult genOpcode(char** args, bool labelOnly);
 		//uint16_t genOpcode(string instruction);		
 
-		void getFinalResult();
+		vector<pair<string, OpcodeResult>> getFinalResult();
 };
 
 #endif

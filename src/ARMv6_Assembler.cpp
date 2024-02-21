@@ -75,13 +75,14 @@ ARMv6_Assembler::ARMv6_Assembler(string asmFilePath) {
 	}
 }
 
-void ARMv6_Assembler::getFinalResult() {
-	for (auto &it: finalOpcodes) {
-		if (it.second.i32)
-			printf("%08x\t%s\n", it.second.opcode, it.first.c_str());
-		else
-			printf("%04x\t%s\n", it.second.opcode, it.first.c_str());
-	}
+vector<pair<string, ARMv6_Assembler::OpcodeResult>> ARMv6_Assembler::getFinalResult() {
+	// for (auto &it: finalOpcodes) {
+	// 	if (it.second.i32)
+	// 		printf("%08x\t%s\n", it.second.opcode, it.first.c_str());
+	// 	else
+	// 		printf("%04x\t%s\n", it.second.opcode, it.first.c_str());
+	// }
+	return finalOpcodes;
 }
 
 vector<string> ARMv6_Assembler::readASMFile(string fpath) {
@@ -1070,7 +1071,7 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode(char** args, bool label
 			result = genOpcode_popPush(args, 1, (char*)"PC");
 			break;
 		case 0x6265:		// PUSH
-			result = genOpcode_popPush(args, 1, (char*)"LR");
+			result = genOpcode_popPush(args, 0, (char*)"LR");
 			break;
 		case 0x18f2:		// REV
 			result = genOpcode_reverseBytes(args, 0b00);
