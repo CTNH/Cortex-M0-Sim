@@ -95,6 +95,9 @@ class ARMv6_Assembler {
 		OpcodeResult genOpcode(char** args, bool labelOnly);
 		//uint16_t genOpcode(string instruction);		
 
+		// Getter for address to starting instruction in memory
+		uint32_t getStartAddr();
+		// Getter for all final opcodes along with their original assembly instructions
 		vector<pair<string, OpcodeResult>> getFinalResult();
 };
 

@@ -1,12 +1,11 @@
 #include "ARMv6_Assembler.h"
-#include <complex>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <cctype>
 #include <ctype.h>			// For toupper() / tolower()
 #include <bits/stdc++.h>	// For sort()
-#include <iterator>
+#include <iomanip>			// For setfill(), setw()
 #include <string>
 #include <vector>
 // C library
@@ -22,6 +21,7 @@ ARMv6_Assembler::ARMv6_Assembler(string asmFilePath) {
 
 	PC = INST_BASEADDR;		// Reset PC
 
+	cout << "[ASSEMBLER] First parse of assembly lines for labels." << endl;
 	for (int i=0; i<asmLines.size(); i++) {
 		// Remove starting spaces and tabs
 		if (asmLines.at(i).find_first_not_of(" \t") != string::npos)
@@ -49,9 +49,10 @@ ARMv6_Assembler::ARMv6_Assembler(string asmFilePath) {
 		OpcodeResult result = genOpcode(args, true);
 	}
 	PC = INST_BASEADDR;		// Reset PC
-	cout << "==== Finished Parsing ====" << endl;
+	cout << "[ASSEMBLER] Added all labels to list. Beginning second parse." << endl;
 	for (int i=0; i<instArgs.size(); i++) {
 		OpcodeResult result = genOpcode(instArgs.at(i), false);
+		cout << "  Input Line " << i << setfill(' ') << setw(intLen(instArgs.size())-intLen(i)) << "\t";
 		if (!result.invalid and !result.unsupported) {
 			printf("[0x%X] opcode generated from:  ", result.opcode);
 			//cout << asmLines.at(i) << endl;
@@ -73,7 +74,18 @@ ARMv6_Assembler::ARMv6_Assembler(string asmFilePath) {
 			cout << "Error parsing instruction: " << parsedLine.at(i) << endl;
 		}
 	}
+	cout << "[ASSEMBLER] Finished generating all opcodes." << endl;
 }
+
+uint32_t ARMv6_Assembler::getStartAddr() {
+	if (labels.find("main") == labels.end()) {
+		log("Label \"main\" not found, assuming starting address as "s + to_string(INST_BASEADDR), 1);
+		return INST_BASEADDR;
+	}
+
+	return labels.find("main") -> second;
+}
+
 
 vector<pair<string, ARMv6_Assembler::OpcodeResult>> ARMv6_Assembler::getFinalResult() {
 	// for (auto &it: finalOpcodes) {
@@ -307,7 +319,7 @@ pair<bool, int> ARMv6_Assembler::labelOffsetLookup(string label) {
 
 void ARMv6_Assembler::log(string msg, int msgLvl) {
 	if (msgLvl >= logLvl)
-		cout << "-->  " << msg << endl;
+		cout << "[LOG] " << msg << endl;
 }
 
 void ARMv6_Assembler::log16bitOpcode(string instruction, uint16_t opcode) {
@@ -697,6 +709,11 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode(char** args, bool label
 			break;
 		case 0x7313:		// BL
 			{
+				if ((string)args[1] == "puts") {
+					result.unsupported = 1;
+					break;
+				}
+
 				pair<bool, int> labelOffset = labelOffsetLookup(args[1]);
 				if (!labelOffset.first) {
 					result.invalid = 1;

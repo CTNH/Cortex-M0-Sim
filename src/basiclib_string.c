@@ -247,3 +247,21 @@ char* upString(char* str) {
 	return out;
 }
 
+// Find length of integer as a string
+int intLen(int n) {
+	if (n == 0)
+		return 1;
+
+	int len = 0;
+	if (n < 0) {
+		n *= -1;	// Convert to positive
+		len = 1;	// For the '-' character
+	}
+	while (n > 0) {
+		n /= 10;
+		len++;
+	}
+
+	return len;
+}
+

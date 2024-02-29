@@ -1,6 +1,6 @@
 #include "cortex-m0p_core.h"
 
-CM0P_Core::CM0P_Core(vector<ARMv6_Assembler::OpcodeResult> opcodes) {
+CM0P_Core::CM0P_Core(vector<ARMv6_Assembler::OpcodeResult> opcodes, uint32_t startAddr) {
 	// Initialize registers
 	for (int i=0; i<16; i++) {
 		R[i] = 0;
@@ -15,6 +15,7 @@ CM0P_Core::CM0P_Core(vector<ARMv6_Assembler::OpcodeResult> opcodes) {
 			memory.write_halfword(INST_BASEADDR, it.opcode);
 		}
 	}
+	setPC(startAddr);
 }
 
 uint32_t CM0P_Core::update_flag_addition(uint32_t a, uint32_t b) {
@@ -977,6 +978,10 @@ void CM0P_Core::step_inst() {
 			}
 			break;
 	}
+}
+
+void CM0P_Core::setPC(uint32_t addr) {
+	*PC = addr;
 }
 
 uint32_t* CM0P_Core::getCoreRegisters() {

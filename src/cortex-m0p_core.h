@@ -23,6 +23,7 @@ class CM0P_Core {
 		uint32_t		stack[40];
 
 		const uint32_t INST_BASEADDR = 0;	// Set base address of an instruction
+		const uint32_t INST_MAINADDR = 0;	// Address of first instruction to run
 
 		CM0P_Memory memory;
 
@@ -30,10 +31,11 @@ class CM0P_Core {
 		uint32_t update_flag_subtraction(uint32_t a, uint32_t b);
 		void stackPush(uint32_t data);
 	public:
-		CM0P_Core(vector<ARMv6_Assembler::OpcodeResult>);		// Constructor
+		CM0P_Core(vector<ARMv6_Assembler::OpcodeResult>, uint32_t startAddr);	// Constructor
 		bool get_flag(char flag);
 		void update_flag(char flag, bool bit);
 		void step_inst();		// Run instruction in memory
+		void setPC(uint32_t addr);			// Setter for PC
 		uint32_t* getCoreRegisters();		// Returns R
 };
 
