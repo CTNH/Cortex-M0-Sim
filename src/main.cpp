@@ -1,6 +1,7 @@
 #include <iostream>
 #include "cortex-m0p_core.h"
 #include "ARMv6_Assembler.h"
+#include "ncursesTUI.h"
 using namespace std;
 
 int main (int argc, char *argv[]) {
@@ -24,9 +25,11 @@ int main (int argc, char *argv[]) {
 			printf("%s\t0x%04x\n", it.first.c_str(), it.second.opcode);
 		uint32_t* coreRegs = core.getCoreRegisters();
 		cout << coreRegs[4] << endl;
-		cout << "Press enter to continue.";
-		cin.ignore();
+		// cout << "Press enter to continue.";
+		// cin.ignore();
 	}
+
+	ApplicationTUI appTui;
 
 	return 0;
 }
