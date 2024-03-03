@@ -7,13 +7,16 @@ CM0P_Core::CM0P_Core(vector<ARMv6_Assembler::OpcodeResult> opcodes, uint32_t sta
 	}
 
 	// Write opcodes into memory
+	int i=0;
 	for (auto &it: opcodes) {
 		if (it.i32) {
-			memory.write_word(INST_BASEADDR, it.opcode);
+			memory.write_word(INST_BASEADDR+i, it.opcode);
+			i+=2;
 		}
 		else {
-			memory.write_halfword(INST_BASEADDR, it.opcode);
+			memory.write_halfword(INST_BASEADDR+i, it.opcode);
 		}
+		i+=2;
 	}
 	setPC(startAddr);
 }
@@ -990,5 +993,9 @@ uint32_t* CM0P_Core::getCoreRegisters() {
 		out[i] = R[i];
 	}
 	return out;
+}
+
+CM0P_Memory* CM0P_Core::getMemPtr() {
+	return &memory;
 }
 

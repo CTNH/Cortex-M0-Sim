@@ -37,6 +37,8 @@ class CM0P_Core {
 		void step_inst();		// Run instruction in memory
 		void setPC(uint32_t addr);			// Setter for PC
 		uint32_t* getCoreRegisters();		// Returns R
+
+		CM0P_Memory* getMemPtr();
 };
 
 #endif
