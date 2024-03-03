@@ -30,6 +30,40 @@ int main (int argc, char *argv[]) {
 	}
 
 	ApplicationTUI appTui;
+	appTui.setCoreMem(core.getMemPtr());
 
+	appTui.updateMemoryWin();
+	appTui.updateMemoryWinCursor();
+
+	bool loop = true;
+	while(loop) {
+		switch(appTui.getWinCh(1)) {
+			case 'q':
+				loop = false;
+				break;
+			case 'h':
+				if (appTui.memWinCurX > 0)
+					appTui.memWinCurX -= 1;
+				appTui.updateMemoryWinCursor();
+				break;
+			case 'l':
+				appTui.memWinCurX += 1;
+				appTui.updateMemoryWinCursor();
+				break;
+			case 'j':
+				appTui.memWinCurY += 1;
+				appTui.updateMemoryWinCursor();
+				break;
+			case 'k':
+				if (appTui.memWinCurY > 1)
+					appTui.memWinCurY -= 1;
+				appTui.updateMemoryWinCursor();
+				break;
+			default:
+				break;
+		}
+	}
+
+	appTui.clean();
 	return 0;
 }

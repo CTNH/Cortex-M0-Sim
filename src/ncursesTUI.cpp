@@ -25,32 +25,33 @@ ApplicationTUI::ApplicationTUI() {
 	createStatusWin();
 	createMemoryWin();
 	createRegisterWin();
+}
 
-
-	bool loop = true;
-	while(loop) {
-		switch(wgetch(memoryWin)) {
-			case 'q':
-				loop = false;
-				break;
-			default:
-				break;
-		}
-	}
-
-
+void ApplicationTUI::clean() {
 	endwin();
 }
 
-void ApplicationTUI::updateReg(int reg, uint32_t value) {
+char ApplicationTUI::getWinCh(int winId) {
+	WINDOW* win;
+	switch(winId) {
+		case 1:
+			win = memoryWin;
+			break;
+		default:
+			return (char)NULL;
+	}
+	return wgetch(win);
+}
+
+void ApplicationTUI::updateRegisterWin(int reg, uint32_t value) {
 	mvwprintw(registerWin, reg+1, 17, "0x%08x", value);
 	wrefresh(registerWin);
 }
 
 void ApplicationTUI::createStatusWin() {
 	statusWin = newwin(1, winWidth, winHeight-1, 0);
-	string separator = "    ";
-	string msg = "q: quit";
+	string separator = "  |  ";
+	string msg = " q: quit";
 	msg += separator + "j: down";
 	msg += separator + "k: up";
 	msg += separator + "n: next instruction";
@@ -63,7 +64,8 @@ void ApplicationTUI::createStatusWin() {
 
 void ApplicationTUI::createRegisterWin() {
 	// Create window
-	registerWin = newwin(18, 29, winHeight/2, winWidth/2-1);
+	// registerWin = newwin(18, 29, winHeight/2, winWidth/2-1);
+	registerWin = newwin(18, 29, winHeight-19, winWidth/2-1);
 
 	wattron(registerWin, A_BOLD);
 	wattron(registerWin, A_UNDERLINE);
@@ -77,7 +79,7 @@ void ApplicationTUI::createRegisterWin() {
 	wattroff(registerWin, A_BOLD);
 
 	for (int i=0; i<16; i++) {
-		updateReg(i, 0); 	// TODO: Take pre-existing values
+		updateRegisterWin(i, 0); 	// TODO: Take pre-existing values
 	}
 
 	// Draw window border
@@ -92,20 +94,32 @@ void ApplicationTUI::createMemoryWin() {
 	box(memoryWin, 0, 0);
 	keypad(memoryWin, TRUE);
 
+	box(memoryWin, 0, 0);
+}
+
+void ApplicationTUI::setCoreMem(CM0P_Memory* coreMem) {
+	this->coreMem = coreMem;
+}
+
+void ApplicationTUI::updateMemoryWinCursor() {
 	wattron(memoryWin, A_BOLD);
 	wattron(memoryWin, A_STANDOUT);
-	mvwprintw(memoryWin, 1, 1, "Hello World");
+	mvwprintw(memoryWin, memWinCurY, memWinCurX, "");
 	wattroff(memoryWin, A_STANDOUT);
 	wattroff(memoryWin, A_BOLD);
 	wrefresh(memoryWin);
+}
 
-	for (int i=2; i<40; i++) {
-		std::string tmp = "";
-		for (int j=0; j<88; j++) {
-			tmp += "-";
+void ApplicationTUI::updateMemoryWin() {
+	// Highlight selected
+	for (int i=0; i<winHeight-3; i++) {
+		// Address of line
+		mvwprintw(memoryWin, i+1, 2, "%08x", (memWinPos+i)*16);
+		// Value in each memory space
+		for (int j=0; j<4; j++) {
+			WORD word = coreMem->read_word((memWinPos+i)*8 + j*4);
+			mvwprintw(memoryWin, i+1, j*11 + 14, "%04x %04x", word>>16, word&0xFFFF);
 		}
-		mvwprintw(memoryWin, i, 1, "%s", tmp.c_str());
 	}
-	box(memoryWin, 0, 0);
 }
 

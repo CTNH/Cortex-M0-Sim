@@ -2,17 +2,22 @@
 #define APP_TUI_H
 
 #include "ncurses.h"
+#include "cortex-m0p_core.h"
 #include <string>
 // #include "form.h"
 using namespace std;
 
 class ApplicationTUI {
 	private:
+		CM0P_Memory* coreMem;
+
 		// Avaliable max size of the application
 		int winWidth, winHeight;
 		// Min size of the application
-		int minWidth = 40;
-		int minHeight = 18;
+		const static int minWidth = 40;
+		const static int minHeight = 18;
+
+		int memWinPos = 0;
 
 		WINDOW *helpWin;		// Help menu
 		WINDOW *memoryWin;
@@ -28,10 +33,20 @@ class ApplicationTUI {
 		void createRegisterWin();
 		void createMemoryWin();
 	public:
+		int memWinCurX = 14, memWinCurY = 1;
+
 		// Constructor
 		ApplicationTUI();
 
-		void updateReg(int reg, uint32_t value);
+		void updateRegisterWin(int reg, uint32_t value);
+		void updateMemoryWin();
+		void updateMemoryWinCursor();
+
+		char getWinCh(int winId);
+
+		void clean();
+
+		void setCoreMem(CM0P_Memory* coreMem);
 };
 
 #endif
