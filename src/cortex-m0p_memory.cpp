@@ -1,30 +1,42 @@
 #include "cortex-m0p_memory.h"
+#include <cstdlib>
 
-void CM0P_Memory:: check_endian() {
-	// endianness = CORE.AIRCR.endianness;
-}
-uint8_t CM0P_Memory:: read_byte(uint8_t address) {
-	check_endian();
-	return 0;
-}
-
-uint16_t CM0P_Memory:: read_halfword(uint8_t address) {
-	check_endian();
-	return 0;
+BYTE CM0P_Memory:: read_byte(uint64_t address) {
+	if (address >= size)
+		return 0;
+	return memory[address];
 }
 
-uint32_t CM0P_Memory:: read_word(uint8_t address) {
-	check_endian();
-	return 0;
+HALFWORD CM0P_Memory:: read_halfword(uint64_t address) {
+	return read_byte(address) << 8 | read_byte(address+1);
+}
+
+WORD CM0P_Memory:: read_word(uint64_t address) {
+	return read_halfword(address) << 16 | read_halfword(address+2);
 }
 
 
-void CM0P_Memory:: write_byte(uint8_t address, BYTE data) {
+void CM0P_Memory:: write_byte(uint64_t address, BYTE data) {
+	if (address < size)
+		memory[address] = data;
 }
 
-void CM0P_Memory:: write_halfword(uint8_t address, HALFWORD data) {
+void CM0P_Memory:: write_halfword(uint64_t address, HALFWORD data) {
+	write_byte(address, data >> 8);
+	write_byte(address+1, data & 0xFF);
 }
 
-void CM0P_Memory:: write_word(uint8_t address, WORD data) {
+void CM0P_Memory:: write_word(uint64_t address, WORD data) {
+	write_halfword(address, data >> 16);
+	write_halfword(address+2, data & 0xFFFF);
+}
+
+CM0P_Memory::CM0P_Memory() {
+	// memory = (uint32_t*)calloc(size, sizeof(uint32_t));
+	memory = new uint8_t[size]();		// Zero init memory
+}
+
+CM0P_Memory::~CM0P_Memory() {
+	free(memory);
 }
 
