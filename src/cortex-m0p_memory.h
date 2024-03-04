@@ -32,5 +32,7 @@ class CM0P_Memory {
 		CM0P_Memory();
 		// Deconstructor
 		~CM0P_Memory();
+
+		int getSize();
 };
 #endif

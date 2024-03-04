@@ -40,13 +40,21 @@ class ApplicationTUI {
 
 		void updateRegisterWin(int reg, uint32_t value);
 		void updateMemoryWin();
-		void updateMemoryWinCursor();
 
-		char getWinCh(int winId);
+		void refreshMemoryWinCursor();
+		// Move the cursor up or down
+		void updateMemoryWinCursor(int lines);
 
-		void clean();
+		// Get key press given window
+		int getWinCh(int winId);
 
+		// Setter
 		void setCoreMem(CM0P_Memory* coreMem);
+
+		void setMemWinCurY(string position);
+
+		// Cleanup; only called before delete
+		void clean();
 };
 
 #endif

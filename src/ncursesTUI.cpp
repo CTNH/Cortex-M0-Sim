@@ -31,7 +31,7 @@ void ApplicationTUI::clean() {
 	endwin();
 }
 
-char ApplicationTUI::getWinCh(int winId) {
+int ApplicationTUI::getWinCh(int winId) {
 	WINDOW* win;
 	switch(winId) {
 		case 1:
@@ -52,8 +52,8 @@ void ApplicationTUI::createStatusWin() {
 	statusWin = newwin(1, winWidth, winHeight-1, 0);
 	string separator = "  |  ";
 	string msg = " q: quit";
-	msg += separator + "j: down";
-	msg += separator + "k: up";
+	// u8"\u25c0\u25bc\u25b2\u25b6" + 
+	msg += separator + "h,j,k,l/arrow keys: navigate";
 	msg += separator + "n: next instruction";
 	msg += separator + "p: previous instruction";
 	msg += separator + "g: goto address";
@@ -101,13 +101,54 @@ void ApplicationTUI::setCoreMem(CM0P_Memory* coreMem) {
 	this->coreMem = coreMem;
 }
 
-void ApplicationTUI::updateMemoryWinCursor() {
+void ApplicationTUI::refreshMemoryWinCursor() {
 	wattron(memoryWin, A_BOLD);
 	wattron(memoryWin, A_STANDOUT);
 	mvwprintw(memoryWin, memWinCurY, memWinCurX, "");
 	wattroff(memoryWin, A_STANDOUT);
 	wattroff(memoryWin, A_BOLD);
 	wrefresh(memoryWin);
+}
+
+void ApplicationTUI::updateMemoryWinCursor(int lines) {
+	// Move down
+	if (lines > 0) {
+		if (memWinCurY+lines < winHeight - 2) {
+			memWinCurY += lines;
+		}
+		// Move memory window down
+		else {
+			// Do not allow scrolling past last address
+			if (memWinPos+lines < (coreMem->getSize()/8 - (winHeight-3))) {
+				memWinPos += lines;
+			}
+			else {
+				memWinCurY = winHeight - 3;
+				memWinPos = coreMem->getSize() / 8 - (winHeight-3);
+			}
+			updateMemoryWin();
+		}
+	}
+	// Move Up
+	else {
+		// Only moves cursor
+		if (memWinCurY+lines > 1) {
+			memWinCurY += lines;
+		}
+		// Only move window but not cursor
+		else {
+			// Do not allow scrolling past first address
+			if (memWinPos+lines > 0) {
+				memWinPos += lines;
+			}
+			else {
+				memWinCurY = 1;
+				memWinPos = 0;
+			}
+			updateMemoryWin();
+		}
+	}
+	refreshMemoryWinCursor();
 }
 
 void ApplicationTUI::updateMemoryWin() {
@@ -121,5 +162,24 @@ void ApplicationTUI::updateMemoryWin() {
 			mvwprintw(memoryWin, i+1, j*11 + 14, "%04x %04x", word>>16, word&0xFFFF);
 		}
 	}
+}
+
+void ApplicationTUI::setMemWinCurY(string position) {
+	if (position == "viewtop") {
+		memWinCurY = 1;
+	}
+	else if (position == "viewbtm")
+		memWinCurY = winHeight - 3;
+	else if (position == "top") {
+		memWinPos = 0;
+		updateMemoryWin();
+		memWinCurY = 1;
+	}
+	else if (position == "btm") {
+		memWinPos = coreMem->getSize() / 8 - (winHeight-3);
+		updateMemoryWin();
+		memWinCurY = winHeight - 3;
+	}
+	refreshMemoryWinCursor();
 }
 

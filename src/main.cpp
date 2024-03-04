@@ -33,7 +33,7 @@ int main (int argc, char *argv[]) {
 	appTui.setCoreMem(core.getMemPtr());
 
 	appTui.updateMemoryWin();
-	appTui.updateMemoryWinCursor();
+	appTui.refreshMemoryWinCursor();
 
 	bool loop = true;
 	while(loop) {
@@ -41,23 +41,53 @@ int main (int argc, char *argv[]) {
 			case 'q':
 				loop = false;
 				break;
+			// MemWin_lft
+			case KEY_LEFT:
 			case 'h':
-				if (appTui.memWinCurX > 0)
+				if (appTui.memWinCurX > 0) {
 					appTui.memWinCurX -= 1;
-				appTui.updateMemoryWinCursor();
+					appTui.refreshMemoryWinCursor();
+				}
 				break;
+			// MemWin_rgt
+			case KEY_RIGHT:
 			case 'l':
 				appTui.memWinCurX += 1;
-				appTui.updateMemoryWinCursor();
+				appTui.refreshMemoryWinCursor();
 				break;
+			// MemWin_dn
+			case KEY_DOWN:
 			case 'j':
-				appTui.memWinCurY += 1;
-				appTui.updateMemoryWinCursor();
+				appTui.updateMemoryWinCursor(1);
 				break;
+			// MemWin_up
+			case KEY_UP:
 			case 'k':
-				if (appTui.memWinCurY > 1)
-					appTui.memWinCurY -= 1;
-				appTui.updateMemoryWinCursor();
+				appTui.updateMemoryWinCursor(-1);
+				break;
+			// MemWin_btm
+			case 'L':
+				appTui.setMemWinCurY("viewbtm");
+				break;
+			// MemWin_top
+			case 'H':
+				appTui.setMemWinCurY("viewtop");
+				break;
+			// MemWin_PgDn
+			case KEY_NPAGE:
+			case 'D':
+				appTui.updateMemoryWinCursor(20);
+				break;
+			// MemWin_PgUp
+			case KEY_PPAGE:
+			case 'U':
+				appTui.updateMemoryWinCursor(-20);
+				break;
+			case 'g':
+				appTui.setMemWinCurY("top");
+				break;
+			case 'G':
+				appTui.setMemWinCurY("btm");
 				break;
 			default:
 				break;

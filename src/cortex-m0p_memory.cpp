@@ -40,3 +40,7 @@ CM0P_Memory::~CM0P_Memory() {
 	free(memory);
 }
 
+int CM0P_Memory::getSize() {
+	return size;
+}
+
