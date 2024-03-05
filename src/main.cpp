@@ -32,7 +32,7 @@ int main (int argc, char *argv[]) {
 	return 0;
 	*/
 
-	ApplicationTUI appTui(core.getMemPtr());
+	ApplicationTUI appTui(core.getMemPtr(), assembler.getLabels());
 
 	ApplicationTUI::winId currWin = appTui.memory;
 	appTui.selectWin(currWin);
@@ -56,26 +56,22 @@ int main (int argc, char *argv[]) {
 						// MemWin_lft
 						case KEY_LEFT:
 						case 'h':
-							if (appTui.memWinCurX > 0) {
-								appTui.memWinCurX -= 1;
-								appTui.refreshMemoryWinCursor();
-							}
+							appTui.updateMemoryWinCursorHorizontal(-1);
 							break;
 						// MemWin_rgt
 						case KEY_RIGHT:
 						case 'l':
-							appTui.memWinCurX += 1;
-							appTui.refreshMemoryWinCursor();
+							appTui.updateMemoryWinCursorHorizontal(1);
 							break;
 						// MemWin_dn
 						case KEY_DOWN:
 						case 'j':
-							appTui.updateMemoryWinCursor(1);
+							appTui.updateMemoryWinCursorVertical(1);
 							break;
 						// MemWin_up
 						case KEY_UP:
 						case 'k':
-							appTui.updateMemoryWinCursor(-1);
+							appTui.updateMemoryWinCursorVertical(-1);
 							break;
 						// MemWin_btm
 						case 'L':
@@ -88,12 +84,12 @@ int main (int argc, char *argv[]) {
 						// MemWin_PgDn
 						case KEY_NPAGE:
 						case 'D':
-							appTui.updateMemoryWinCursor(20);
+							appTui.updateMemoryWinCursorVertical(20);
 							break;
 						// MemWin_PgUp
 						case KEY_PPAGE:
 						case 'U':
-							appTui.updateMemoryWinCursor(-20);
+							appTui.updateMemoryWinCursorVertical(-20);
 							break;
 						case 'g':
 							appTui.setMemWinCurY("top");

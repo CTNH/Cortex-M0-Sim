@@ -1847,3 +1847,7 @@ uint16_t ARMv6_Assembler::getRegList(char** args, int startArg) {
 	return regList;
 }
 
+unordered_map<string, uint32_t> ARMv6_Assembler::getLabels() {
+	return labels;
+}
+

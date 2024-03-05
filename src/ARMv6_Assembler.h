@@ -99,6 +99,8 @@ class ARMv6_Assembler {
 		uint32_t getStartAddr();
 		// Getter for all final opcodes along with their original assembly instructions
 		vector<pair<string, OpcodeResult>> getFinalResult();
+		// Getter for labels
+		unordered_map<string, uint32_t> getLabels();
 };
 
 #endif

@@ -21,6 +21,7 @@ class ApplicationTUI {
 		int memWinPos = 0;
 		int memWinMaxPos = 0;
 		int memWinWordPerLine = 6;
+		int memWinCurX = 0, memWinCurY = 1;
 
 		WINDOW *helpWin;		// Help menu
 		WINDOW *memoryWin;
@@ -28,6 +29,7 @@ class ApplicationTUI {
 		WINDOW *statusWin;		// Keybinds / current window
 		WINDOW *registerWin;	// Register values
 		WINDOW *flagsWin;
+		WINDOW *labelsWin;
 
 
 		// Array of text in each left and right window
@@ -38,6 +40,8 @@ class ApplicationTUI {
 		void createRegisterWin();
 		void createMemoryWin();
 		void createFlagsWin();
+		void createLabelsWin(unordered_map<string, uint32_t> labels);
+		void updateStatusWin();
 
 	public:
 		enum winId {
@@ -48,19 +52,20 @@ class ApplicationTUI {
 			registers,
 			flags
 		};
-		int memWinCurX = 14, memWinCurY = 1;
 
 		// Constructor
-		ApplicationTUI(CM0P_Memory* memPtr);
+		ApplicationTUI(CM0P_Memory* memPtr, unordered_map<string, uint32_t> labels);
 
 		void updateRegisterWin(int reg, uint32_t value);
 		void updateMemoryWin();
 		void updateFlagsWin(char flag, bool value);
 
 		// Redraw cursor on screen
-		void refreshMemoryWinCursor();
+		void removeMemoryWinCursor();
+		void drawMemoryWinCursor();
 		// Move the cursor up or down
-		void updateMemoryWinCursor(int lines);
+		void updateMemoryWinCursorVertical(int lines);
+		void updateMemoryWinCursorHorizontal(int cols);
 
 		// Get key press given window
 		int getWinCh(winId id);

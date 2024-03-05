@@ -1,10 +1,12 @@
 #include "ncursesTUI.h"
+#include <algorithm>	// For sort
+#include <cstdint>
 #include <ncurses.h>
 #include <string>
 
 // void ApplicationTUI::resizeWin(int foo) {}
 
-ApplicationTUI::ApplicationTUI(CM0P_Memory* memPtr) {
+ApplicationTUI::ApplicationTUI(CM0P_Memory* memPtr, unordered_map<string, uint32_t> labels) {
 	this->coreMem = memPtr;
 	initscr();
 	cbreak();
@@ -26,6 +28,7 @@ ApplicationTUI::ApplicationTUI(CM0P_Memory* memPtr) {
 	createMemoryWin();
 	createRegisterWin();
 	createFlagsWin();
+	createLabelsWin(labels);
 
 	selectWin(memory);
 }
@@ -54,6 +57,10 @@ void ApplicationTUI::createStatusWin() {
 	msg += separator + "g: goto address";
 	// mvwprintw(statusWin, 0, 0, "q: quit");
 	mvwprintw(statusWin, 0, 0, "%s", msg.c_str());
+	wrefresh(statusWin);
+}
+void ApplicationTUI::updateStatusWin() {
+	mvwprintw(statusWin, 0, winWidth-9, "%08x", (memWinPos+memWinCurY-1)*4*memWinWordPerLine + memWinCurX*2);
 	wrefresh(statusWin);
 }
 
@@ -93,7 +100,7 @@ void ApplicationTUI::createMemoryWin() {
 	memWinMaxPos = (coreMem->getSize() + memWinMaxPos - 1) / memWinMaxPos;
 	memWinMaxPos = memWinMaxPos - (winHeight-3);
 	updateMemoryWin();
-	refreshMemoryWinCursor();
+	drawMemoryWinCursor();
 }
 
 void ApplicationTUI::createFlagsWin() {
@@ -105,17 +112,43 @@ void ApplicationTUI::createFlagsWin() {
 	wborder(flagsWin, '|', '|', '-', '-', '+', '+', '+', '+');
 	wrefresh(flagsWin);
 }
+void ApplicationTUI::createLabelsWin(unordered_map<string, uint32_t> labels) {
+	labelsWin = newwin(winHeight-23, 29, 0, winWidth/2-1);
+	// Sort labels by their memory addresses
+	vector<pair<string, uint32_t>> sortedLabels(labels.begin(), labels.end());
+	sort(sortedLabels.begin(), sortedLabels.end(),
+		[](pair<string, uint32_t>&a,pair<string, uint32_t>&b) {
+			return a.second < b.second;
+		}
+	);
+	int i=1;
+	for (auto &it: sortedLabels) {
+		mvwprintw(labelsWin, i, 2, "%08x   %s", it.second, it.first.c_str());
+		i++;
+	}
+	wborder(labelsWin, '|', '|', '-', '-', '+', '+', '+', '+');
+	wrefresh(labelsWin);
+}
 
-void ApplicationTUI::refreshMemoryWinCursor() {
+void ApplicationTUI::removeMemoryWinCursor() {
+	HALFWORD hword = coreMem-> read_halfword((memWinPos+memWinCurY-1)*4*memWinWordPerLine + memWinCurX*2);
+	mvwprintw(memoryWin, memWinCurY, memWinCurX*5 + 14 + memWinCurX/2, "%04x", hword);
+	wrefresh(memoryWin);
+}
+void ApplicationTUI::drawMemoryWinCursor() {
 	wattron(memoryWin, A_BOLD);
 	wattron(memoryWin, A_STANDOUT);
-	mvwprintw(memoryWin, memWinCurY, memWinCurX, "");
+	HALFWORD hword = coreMem-> read_halfword((memWinPos+memWinCurY-1)*4*memWinWordPerLine + memWinCurX*2);
+	mvwprintw(memoryWin, memWinCurY, memWinCurX*5 + 14 + memWinCurX/2, "%04x", hword);
 	wattroff(memoryWin, A_STANDOUT);
 	wattroff(memoryWin, A_BOLD);
+	// Remove extra highlighted character
+	mvwprintw(memoryWin, memWinCurY, memWinCurX*5 + 14 + memWinCurX/2 + 3, "");
 	wrefresh(memoryWin);
 }
 
-void ApplicationTUI::updateMemoryWinCursor(int lines) {
+void ApplicationTUI::updateMemoryWinCursorVertical(int lines) {
+	removeMemoryWinCursor();
 	// Move down
 	if (lines > 0) {
 		if (memWinCurY+lines < winHeight - 2) {
@@ -135,9 +168,9 @@ void ApplicationTUI::updateMemoryWinCursor(int lines) {
 		}
 	}
 	// Move Up
-	else {
+	else if (lines) {
 		// Only moves cursor
-		if (memWinCurY+lines > 1) {
+		if (memWinCurY+lines > 0) {
 			memWinCurY += lines;
 		}
 		// Only move window but not cursor
@@ -153,7 +186,31 @@ void ApplicationTUI::updateMemoryWinCursor(int lines) {
 			updateMemoryWin();
 		}
 	}
-	refreshMemoryWinCursor();
+	drawMemoryWinCursor();
+	updateStatusWin();
+}
+void ApplicationTUI::updateMemoryWinCursorHorizontal(int cols) {
+	removeMemoryWinCursor();
+	if (cols > 0) {
+		if (memWinCurX < memWinWordPerLine*2 -1) {
+			memWinCurX += cols;
+		}
+		else if (memWinCurY+1 < winHeight - 2) {
+			memWinCurX = 0;
+			updateMemoryWinCursorVertical(1);
+		}
+	}
+	else {
+		if (memWinCurX > 0) {
+			memWinCurX--;
+		}
+		else if (memWinCurY-1 > 0) {
+			memWinCurX = memWinWordPerLine*2 - 1;
+			updateMemoryWinCursorVertical(-1);
+		}
+	}
+	drawMemoryWinCursor();
+	updateStatusWin();
 }
 
 void ApplicationTUI::updateMemoryWin() {
@@ -185,7 +242,7 @@ void ApplicationTUI::setMemWinCurY(string position) {
 		updateMemoryWin();
 		memWinCurY = winHeight - 3;
 	}
-	refreshMemoryWinCursor();
+	drawMemoryWinCursor();
 }
 
 WINDOW* ApplicationTUI::getWin(ApplicationTUI::winId id) {
