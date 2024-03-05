@@ -9,18 +9,30 @@
 using namespace std;
 
 class ApplicationTUI {
+	public:
+		enum winId {
+			help,
+			memory,
+			opcode,
+			status,
+			registers,
+			flags
+		};
+
 	private:
-		CM0P_Memory* coreMem;
+		// Min size of the application
+		const int minWidth = 40;
+		const int minHeight = 18;
+
+		const int memWinWordPerLine = 6;
+
+		CM0P_Core* core;
 
 		// Avaliable max size of the application
 		int winWidth, winHeight;
-		// Min size of the application
-		const static int minWidth = 40;
-		const static int minHeight = 18;
 
 		int memWinPos = 0;
-		int memWinMaxPos = 0;
-		int memWinWordPerLine = 6;
+		int memWinMaxPos = 0;	// Calculated in createMemoryWin
 		int memWinCurX = 0, memWinCurY = 1;
 
 		WINDOW *helpWin;		// Help menu
@@ -30,7 +42,6 @@ class ApplicationTUI {
 		WINDOW *registerWin;	// Register values
 		WINDOW *flagsWin;
 		WINDOW *labelsWin;
-
 
 		// Array of text in each left and right window
 		string *leftWinTxt, *rightWinText;
@@ -43,22 +54,16 @@ class ApplicationTUI {
 		void createLabelsWin(unordered_map<string, uint32_t> labels);
 		void updateStatusWin();
 
+		winId selectedWin;
+		WINDOW* getWin(winId id);
+
 	public:
-		enum winId {
-			help,
-			memory,
-			opcode,
-			status,
-			registers,
-			flags
-		};
-
 		// Constructor
-		ApplicationTUI(CM0P_Memory* memPtr, unordered_map<string, uint32_t> labels);
+		ApplicationTUI(CM0P_Core* core, unordered_map<string, uint32_t> labels);
 
-		void updateRegisterWin(int reg, uint32_t value);
+		void updateRegisterWin();
 		void updateMemoryWin();
-		void updateFlagsWin(char flag, bool value);
+		void updateFlagsWin();
 
 		// Redraw cursor on screen
 		void removeMemoryWinCursor();
@@ -80,9 +85,6 @@ class ApplicationTUI {
 
 		// Creates prompt to check for exit
 		bool confirmExit();
-	private:
-		winId selectedWin;
-		WINDOW* getWin(winId id);
 };
 
 #endif

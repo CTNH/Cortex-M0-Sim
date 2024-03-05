@@ -32,7 +32,7 @@ int main (int argc, char *argv[]) {
 	return 0;
 	*/
 
-	ApplicationTUI appTui(core.getMemPtr(), assembler.getLabels());
+	ApplicationTUI appTui(&core, assembler.getLabels());
 
 	ApplicationTUI::winId currWin = appTui.memory;
 	appTui.selectWin(currWin);
@@ -105,14 +105,8 @@ int main (int argc, char *argv[]) {
 						case 'n':
 							{
 								core.step_inst();
-								uint32_t* coreRegs = core.getCoreRegisters();
-								for (int i=0; i<16; i++) {
-									appTui.updateRegisterWin(i, coreRegs[i]);
-								}
-								appTui.updateFlagsWin('N', core.get_flag('N'));
-								appTui.updateFlagsWin('Z', core.get_flag('Z'));
-								appTui.updateFlagsWin('C', core.get_flag('C'));
-								appTui.updateFlagsWin('V', core.get_flag('V'));
+								appTui.updateRegisterWin();
+								appTui.updateFlagsWin();
 							}
 							break;
 						default:

@@ -6,8 +6,8 @@
 
 // void ApplicationTUI::resizeWin(int foo) {}
 
-ApplicationTUI::ApplicationTUI(CM0P_Memory* memPtr, unordered_map<string, uint32_t> labels) {
-	this->coreMem = memPtr;
+ApplicationTUI::ApplicationTUI(CM0P_Core* core, unordered_map<string, uint32_t> labels) {
+	this -> core = core;
 	initscr();
 	cbreak();
 	noecho();
@@ -41,8 +41,11 @@ int ApplicationTUI::getWinCh(ApplicationTUI::winId id) {
 	return wgetch(getWin(id));
 }
 
-void ApplicationTUI::updateRegisterWin(int reg, uint32_t value) {
-	mvwprintw(registerWin, reg+1, 17, "0x%08x", value);
+void ApplicationTUI::updateRegisterWin() {
+	uint32_t* coreRegs = core -> getCoreRegisters();
+	for (int i=0; i<16; i++) {
+		mvwprintw(registerWin, i+1, 17, "0x%08x", coreRegs[i]);
+	}
 	wrefresh(registerWin);
 }
 
@@ -79,9 +82,7 @@ void ApplicationTUI::createRegisterWin() {
 	wattroff(registerWin, A_UNDERLINE);
 	wattroff(registerWin, A_BOLD);
 
-	for (int i=0; i<16; i++) {
-		updateRegisterWin(i, 0); 	// TODO: Take pre-existing values
-	}
+	updateRegisterWin();
 
 	// Draw window border
 	wborder(registerWin, '|', '|', '-', '-', '+', '+', '+', '+');
@@ -97,7 +98,7 @@ void ApplicationTUI::createMemoryWin() {
 
 	// Set max position for memory window
 	memWinMaxPos = (2*memWinWordPerLine);
-	memWinMaxPos = (coreMem->getSize() + memWinMaxPos - 1) / memWinMaxPos;
+	memWinMaxPos = (core->getMemPtr()->getSize() + memWinMaxPos - 1) / memWinMaxPos;
 	memWinMaxPos = memWinMaxPos - (winHeight-3);
 	updateMemoryWin();
 	drawMemoryWinCursor();
@@ -109,11 +110,13 @@ void ApplicationTUI::createFlagsWin() {
 	mvwprintw(flagsWin, 2, 2, "Z");
 	mvwprintw(flagsWin, 3, 2, "C");
 	mvwprintw(flagsWin, 4, 2, "V");
+	updateFlagsWin();
 	wborder(flagsWin, '|', '|', '-', '-', '+', '+', '+', '+');
 	wrefresh(flagsWin);
 }
 void ApplicationTUI::createLabelsWin(unordered_map<string, uint32_t> labels) {
 	labelsWin = newwin(winHeight-23, 29, 0, winWidth/2-1);
+	mvwprintw(labelsWin, 1, 2, "-- Labels --");
 	// Sort labels by their memory addresses
 	vector<pair<string, uint32_t>> sortedLabels(labels.begin(), labels.end());
 	sort(sortedLabels.begin(), sortedLabels.end(),
@@ -121,7 +124,7 @@ void ApplicationTUI::createLabelsWin(unordered_map<string, uint32_t> labels) {
 			return a.second < b.second;
 		}
 	);
-	int i=1;
+	int i=2;
 	for (auto &it: sortedLabels) {
 		mvwprintw(labelsWin, i, 2, "%08x   %s", it.second, it.first.c_str());
 		i++;
@@ -131,14 +134,14 @@ void ApplicationTUI::createLabelsWin(unordered_map<string, uint32_t> labels) {
 }
 
 void ApplicationTUI::removeMemoryWinCursor() {
-	HALFWORD hword = coreMem-> read_halfword((memWinPos+memWinCurY-1)*4*memWinWordPerLine + memWinCurX*2);
+	HALFWORD hword = core->getMemPtr() -> read_halfword((memWinPos+memWinCurY-1)*4*memWinWordPerLine + memWinCurX*2);
 	mvwprintw(memoryWin, memWinCurY, memWinCurX*5 + 14 + memWinCurX/2, "%04x", hword);
 	wrefresh(memoryWin);
 }
 void ApplicationTUI::drawMemoryWinCursor() {
 	wattron(memoryWin, A_BOLD);
 	wattron(memoryWin, A_STANDOUT);
-	HALFWORD hword = coreMem-> read_halfword((memWinPos+memWinCurY-1)*4*memWinWordPerLine + memWinCurX*2);
+	HALFWORD hword = core->getMemPtr() -> read_halfword((memWinPos+memWinCurY-1)*4*memWinWordPerLine + memWinCurX*2);
 	mvwprintw(memoryWin, memWinCurY, memWinCurX*5 + 14 + memWinCurX/2, "%04x", hword);
 	wattroff(memoryWin, A_STANDOUT);
 	wattroff(memoryWin, A_BOLD);
@@ -220,7 +223,7 @@ void ApplicationTUI::updateMemoryWin() {
 		mvwprintw(memoryWin, i+1, 2, "%08x", (memWinPos+i)*4*memWinWordPerLine);
 		// Value in each memory space
 		for (int j=0; j<memWinWordPerLine; j++) {
-			WORD word = coreMem->read_word((memWinPos+i)*4*memWinWordPerLine + j*4);
+			WORD word = core->getMemPtr()->read_word((memWinPos+i)*4*memWinWordPerLine + j*4);
 			mvwprintw(memoryWin, i+1, j*11 + 14, "%04x %04x", word>>16, word&0xFFFF);
 		}
 	}
@@ -290,21 +293,12 @@ bool ApplicationTUI::confirmExit() {
 	return false;
 }
 
-void ApplicationTUI::updateFlagsWin(char flag, bool value) {
-	switch (flag) {
-		case 'N':
-			mvwprintw(flagsWin, 1, 5, "%d", value);
-			break;
-		case 'Z':
-			mvwprintw(flagsWin, 2, 5, "%d", value);
-			break;
-		case 'C':
-			mvwprintw(flagsWin, 3, 5, "%d", value);
-			break;
-		case 'V':
-			mvwprintw(flagsWin, 4, 5, "%d", value);
-			break;
-	}
+void ApplicationTUI::updateFlagsWin() {
+	mvwprintw(flagsWin, 1, 5, "%d", core -> get_flag('N'));
+	mvwprintw(flagsWin, 2, 5, "%d", core -> get_flag('Z'));
+	mvwprintw(flagsWin, 3, 5, "%d", core -> get_flag('C'));
+	mvwprintw(flagsWin, 4, 5, "%d", core -> get_flag('V'));
+
 	wrefresh(flagsWin);
 }
 
