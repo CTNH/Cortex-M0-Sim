@@ -57,6 +57,8 @@ class ApplicationTUI {
 		winId selectedWin;
 		WINDOW* getWin(winId id);
 
+		string statusWinInputPrompt(string prompt);
+
 	public:
 		// Constructor
 		ApplicationTUI(CM0P_Core* core, unordered_map<string, uint32_t> labels);
@@ -79,6 +81,8 @@ class ApplicationTUI {
 		void setMemWinCurY(string position);
 
 		void selectWin(winId id);
+
+		void memWinGoto(uint32_t address);
 
 		// Cleanup; only called before delete
 		void clean();

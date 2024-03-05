@@ -1,6 +1,5 @@
 #include "ncursesTUI.h"
 #include <algorithm>	// For sort
-#include <cstdint>
 #include <ncurses.h>
 #include <string>
 
@@ -51,13 +50,14 @@ void ApplicationTUI::updateRegisterWin() {
 
 void ApplicationTUI::createStatusWin() {
 	statusWin = newwin(1, winWidth, winHeight-1, 0);
+	keypad(statusWin, TRUE);
 	string separator = "  |  ";
 	string msg = " q: quit";
 	// u8"\u25c0\u25bc\u25b2\u25b6" + 
 	msg += separator + "h,j,k,l/arrow keys: navigate";
 	msg += separator + "n: next instruction";
 	msg += separator + "p: previous instruction";
-	msg += separator + "g: goto address";
+	msg += separator + "/: goto address";
 	// mvwprintw(statusWin, 0, 0, "q: quit");
 	mvwprintw(statusWin, 0, 0, "%s", msg.c_str());
 	wrefresh(statusWin);
@@ -89,6 +89,98 @@ void ApplicationTUI::createRegisterWin() {
 
 	// Put on screen
 	wrefresh(registerWin);
+}
+string ApplicationTUI::statusWinInputPrompt(string prompt) {
+	wclear(statusWin);
+
+	mvwprintw(statusWin, 0, 1, "%s", prompt.c_str());
+	wrefresh(statusWin);
+	int i = 0;
+	string out = "";
+	bool loop = 1;
+	while (loop) {
+		int c = wgetch(statusWin);
+		switch (c) {
+			case KEY_ENTER:
+			case 10:
+				loop = 0;
+				break;
+			case 8:		// ^h
+			case KEY_BACKSPACE:
+			case 127:
+				if (i == 0)
+					break;
+				i--;
+				out.erase(i,1);
+				mvwprintw(statusWin, 0, prompt.size()+1, "%s ", out.c_str()); 
+				break;
+			case KEY_RIGHT:
+			case 6:		// ^f
+			case 2967:
+				if (i < out.size()) {
+					i++;
+				}
+				break;
+			case KEY_LEFT:
+			case 2:		// ^b
+			case 2968:
+				if (i > 0) {
+					i--;
+				}
+				break;
+			case KEY_HOME:
+			case 1:		// ^a
+				i=0;
+				break;
+			case KEY_END:
+			case 5:		// ^e
+				i = out.size();
+				break;
+			case 27:	// ESC
+				createStatusWin();
+				return " ";
+			// Clear line
+			case 21:	// ^U
+				mvwprintw(statusWin, 0, prompt.size() + 1, "%s", string(out.size(), ' ').c_str());
+				out.erase(0, i);
+				mvwprintw(statusWin, 0, prompt.size()+1, "%s  ", out.c_str()); 
+				i=0;
+				break;
+			case '!' ... '~':
+				out.insert(i, 1, c);
+				mvwprintw(statusWin, 0, prompt.size()+1, "%s  ", out.c_str()); 
+				i++;
+				break;
+			default:
+				break;
+		}
+		mvwprintw(statusWin, 0, i+prompt.size() + 1, "");
+
+	}
+	out.push_back('\0');
+
+	createStatusWin();
+	return out;
+}
+
+
+void ApplicationTUI::memWinGoto(uint32_t address) {
+	string ustr = statusWinInputPrompt("Goto address: ");
+	address = (int)strtol(ustr.c_str(), NULL, 0);
+
+	// Do nothing if address is over max of memory
+	if (address == 0 or address > core->getMemPtr()->getSize())
+		return;
+	removeMemoryWinCursor();
+	memWinCurX = (address % (memWinWordPerLine*4)) / 2;
+	memWinPos = (address / (memWinWordPerLine*4));
+	if (memWinPos > memWinMaxPos)
+		memWinPos = memWinMaxPos;
+	memWinCurY = address / (memWinWordPerLine*4) - memWinPos + 1;
+
+	updateMemoryWin();
+	drawMemoryWinCursor();
+	updateStatusWin();
 }
 
 void ApplicationTUI::createMemoryWin() {

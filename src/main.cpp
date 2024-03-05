@@ -4,6 +4,10 @@
 #include "ncursesTUI.h"
 using namespace std;
 
+bool universalKeys(int key) {
+	return 1;
+}
+
 int main (int argc, char *argv[]) {
 
 	ARMv6_Assembler assembler("main.c.s");
@@ -108,6 +112,9 @@ int main (int argc, char *argv[]) {
 								appTui.updateRegisterWin();
 								appTui.updateFlagsWin();
 							}
+							break;
+						case '/':
+							appTui.memWinGoto(0x3fffae20);
 							break;
 						default:
 							break;
