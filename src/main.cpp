@@ -29,67 +29,108 @@ int main (int argc, char *argv[]) {
 		// cin.ignore();
 	}
 
-	ApplicationTUI appTui;
-	appTui.setCoreMem(core.getMemPtr());
+	ApplicationTUI appTui(core.getMemPtr());
 
-	appTui.updateMemoryWin();
-	appTui.refreshMemoryWinCursor();
-
+	ApplicationTUI::winId currWin = appTui.memory;
+	appTui.selectWin(currWin);
 	bool loop = true;
+	bool winLoop = true;
+	
 	while(loop) {
-		switch(appTui.getWinCh(1)) {
-			case 'q':
-				loop = false;
+		switch(currWin) {
+			case ApplicationTUI::help:
 				break;
-			// MemWin_lft
-			case KEY_LEFT:
-			case 'h':
-				if (appTui.memWinCurX > 0) {
-					appTui.memWinCurX -= 1;
-					appTui.refreshMemoryWinCursor();
+			case ApplicationTUI::memory:
+				winLoop = true;
+				while(winLoop) {
+					switch(appTui.getWinCh(currWin)) {
+						case 'q':
+							if (appTui.confirmExit()) {
+								loop = false;
+								winLoop = false;
+							}
+							break;
+						// MemWin_lft
+						case KEY_LEFT:
+						case 'h':
+							if (appTui.memWinCurX > 0) {
+								appTui.memWinCurX -= 1;
+								appTui.refreshMemoryWinCursor();
+							}
+							break;
+						// MemWin_rgt
+						case KEY_RIGHT:
+						case 'l':
+							appTui.memWinCurX += 1;
+							appTui.refreshMemoryWinCursor();
+							break;
+						// MemWin_dn
+						case KEY_DOWN:
+						case 'j':
+							appTui.updateMemoryWinCursor(1);
+							break;
+						// MemWin_up
+						case KEY_UP:
+						case 'k':
+							appTui.updateMemoryWinCursor(-1);
+							break;
+						// MemWin_btm
+						case 'L':
+							appTui.setMemWinCurY("viewbtm");
+							break;
+						// MemWin_top
+						case 'H':
+							appTui.setMemWinCurY("viewtop");
+							break;
+						// MemWin_PgDn
+						case KEY_NPAGE:
+						case 'D':
+							appTui.updateMemoryWinCursor(20);
+							break;
+						// MemWin_PgUp
+						case KEY_PPAGE:
+						case 'U':
+							appTui.updateMemoryWinCursor(-20);
+							break;
+						case 'g':
+							appTui.setMemWinCurY("top");
+							break;
+						case 'G':
+							appTui.setMemWinCurY("btm");
+							break;
+						case '\t':
+							currWin = ApplicationTUI::registers;
+							appTui.selectWin(ApplicationTUI::registers);
+							winLoop = false;
+							break;
+						default:
+							break;
+					}
 				}
 				break;
-			// MemWin_rgt
-			case KEY_RIGHT:
-			case 'l':
-				appTui.memWinCurX += 1;
-				appTui.refreshMemoryWinCursor();
+			case ApplicationTUI::opcode:
 				break;
-			// MemWin_dn
-			case KEY_DOWN:
-			case 'j':
-				appTui.updateMemoryWinCursor(1);
+			case ApplicationTUI::status:
 				break;
-			// MemWin_up
-			case KEY_UP:
-			case 'k':
-				appTui.updateMemoryWinCursor(-1);
-				break;
-			// MemWin_btm
-			case 'L':
-				appTui.setMemWinCurY("viewbtm");
-				break;
-			// MemWin_top
-			case 'H':
-				appTui.setMemWinCurY("viewtop");
-				break;
-			// MemWin_PgDn
-			case KEY_NPAGE:
-			case 'D':
-				appTui.updateMemoryWinCursor(20);
-				break;
-			// MemWin_PgUp
-			case KEY_PPAGE:
-			case 'U':
-				appTui.updateMemoryWinCursor(-20);
-				break;
-			case 'g':
-				appTui.setMemWinCurY("top");
-				break;
-			case 'G':
-				appTui.setMemWinCurY("btm");
-				break;
-			default:
+			case ApplicationTUI::registers:
+				winLoop = true;
+				while (winLoop) {
+					switch(appTui.getWinCh(currWin)) {
+						case 'q':
+							if (appTui.confirmExit()) {
+								loop = false;
+								winLoop = false;
+							}
+							break;
+						case '\t':
+							currWin = ApplicationTUI::memory;
+							appTui.selectWin(ApplicationTUI::memory);
+							winLoop = false;
+							break;
+						default:
+							break;
+					}
+				}
 				break;
 		}
 	}

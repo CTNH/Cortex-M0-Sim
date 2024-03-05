@@ -4,8 +4,8 @@
 
 // void ApplicationTUI::resizeWin(int foo) {}
 
-ApplicationTUI::ApplicationTUI() {
-
+ApplicationTUI::ApplicationTUI(CM0P_Memory* memPtr) {
+	this->coreMem = memPtr;
 	initscr();
 	cbreak();
 	noecho();
@@ -25,22 +25,16 @@ ApplicationTUI::ApplicationTUI() {
 	createStatusWin();
 	createMemoryWin();
 	createRegisterWin();
+
+	selectWin(memory);
 }
 
 void ApplicationTUI::clean() {
 	endwin();
 }
 
-int ApplicationTUI::getWinCh(int winId) {
-	WINDOW* win;
-	switch(winId) {
-		case 1:
-			win = memoryWin;
-			break;
-		default:
-			return (char)NULL;
-	}
-	return wgetch(win);
+int ApplicationTUI::getWinCh(ApplicationTUI::winId id) {
+	return wgetch(getWin(id));
 }
 
 void ApplicationTUI::updateRegisterWin(int reg, uint32_t value) {
@@ -64,7 +58,6 @@ void ApplicationTUI::createStatusWin() {
 
 void ApplicationTUI::createRegisterWin() {
 	// Create window
-	// registerWin = newwin(18, 29, winHeight/2, winWidth/2-1);
 	registerWin = newwin(18, 29, winHeight-19, winWidth/2-1);
 
 	wattron(registerWin, A_BOLD);
@@ -83,7 +76,7 @@ void ApplicationTUI::createRegisterWin() {
 	}
 
 	// Draw window border
-	box(registerWin, 0, 0);
+	wborder(registerWin, '|', '|', '-', '-', '+', '+', '+', '+');
 
 	// Put on screen
 	wrefresh(registerWin);
@@ -91,14 +84,23 @@ void ApplicationTUI::createRegisterWin() {
 
 void ApplicationTUI::createMemoryWin() {
 	memoryWin = newwin(winHeight-1, winWidth/2, 0, 0);
-	box(memoryWin, 0, 0);
 	keypad(memoryWin, TRUE);
+	wborder(memoryWin, '|', '|', '-', '-', '+', '+', '+', '+');
 
-	box(memoryWin, 0, 0);
+	// Set max position for memory window
+	memWinMaxPos = (2*memWinWordPerLine);
+	memWinMaxPos = (coreMem->getSize() + memWinMaxPos - 1) / memWinMaxPos;
+	memWinMaxPos = memWinMaxPos - (winHeight-3);
+	updateMemoryWin();
+	refreshMemoryWinCursor();
 }
 
 void ApplicationTUI::setCoreMem(CM0P_Memory* coreMem) {
 	this->coreMem = coreMem;
+	// Set max position for memory window
+	memWinMaxPos = (2*memWinWordPerLine);
+	memWinMaxPos = (coreMem->getSize() + memWinMaxPos - 1) / memWinMaxPos;
+	memWinMaxPos = memWinMaxPos - (winHeight-3);
 }
 
 void ApplicationTUI::refreshMemoryWinCursor() {
@@ -119,12 +121,12 @@ void ApplicationTUI::updateMemoryWinCursor(int lines) {
 		// Move memory window down
 		else {
 			// Do not allow scrolling past last address
-			if (memWinPos+lines < (coreMem->getSize()/8 - (winHeight-3))) {
+			if (memWinPos+lines < memWinMaxPos) {
 				memWinPos += lines;
 			}
 			else {
 				memWinCurY = winHeight - 3;
-				memWinPos = coreMem->getSize() / 8 - (winHeight-3);
+				memWinPos = memWinMaxPos;
 			}
 			updateMemoryWin();
 		}
@@ -155,9 +157,9 @@ void ApplicationTUI::updateMemoryWin() {
 	// Highlight selected
 	for (int i=0; i<winHeight-3; i++) {
 		// Address of line
-		mvwprintw(memoryWin, i+1, 2, "%08x", (memWinPos+i)*16);
+		mvwprintw(memoryWin, i+1, 2, "%08x", (memWinPos+i)*4*memWinWordPerLine);
 		// Value in each memory space
-		for (int j=0; j<4; j++) {
+		for (int j=0; j<memWinWordPerLine; j++) {
 			WORD word = coreMem->read_word((memWinPos+i)*8 + j*4);
 			mvwprintw(memoryWin, i+1, j*11 + 14, "%04x %04x", word>>16, word&0xFFFF);
 		}
@@ -176,10 +178,53 @@ void ApplicationTUI::setMemWinCurY(string position) {
 		memWinCurY = 1;
 	}
 	else if (position == "btm") {
-		memWinPos = coreMem->getSize() / 8 - (winHeight-3);
+		memWinPos = memWinMaxPos;
 		updateMemoryWin();
 		memWinCurY = winHeight - 3;
 	}
 	refreshMemoryWinCursor();
+}
+
+WINDOW* ApplicationTUI::getWin(ApplicationTUI::winId id) {
+	switch(id) {
+		case memory:
+			return memoryWin;
+		case help:
+			return helpWin;
+		case registers:
+			return registerWin;
+		case opcode:
+			return opcodeWin;
+		case status:
+			return statusWin;
+		default:
+			return (WINDOW*)NULL;
+	}
+}
+void ApplicationTUI::selectWin(ApplicationTUI::winId id) {
+	if (id != selectedWin) {
+		// 'Unselect' previous selected window
+		wborder(getWin(selectedWin), '|', '|', '-', '-', '+', '+', '+', '+');
+		wrefresh(getWin(selectedWin));
+		// 'Select' new window
+		wattron(getWin(id), A_BOLD);
+		wattron(getWin(id), A_STANDOUT);
+		wborder(getWin(id), '|', '|', '-', '-', '+', '+', '+', '+');
+		wattroff(getWin(id), A_STANDOUT);
+		wattroff(getWin(id), A_BOLD);
+		wrefresh(getWin(id));
+
+		selectedWin = id;
+	}
+}
+
+bool ApplicationTUI::confirmExit() {
+	wclear(statusWin);
+	mvwprintw(statusWin, 0, 0, "Exit? (y/N)");
+	if (getWinCh(status) == 'y')
+		return true;
+	// CLeanup
+	createStatusWin();
+	return false;
 }
 
