@@ -79,6 +79,7 @@ void CM0P_Core::update_flag(char flag, bool bit) {
 
 void CM0P_Core::step_inst() {
 	uint16_t opcode = memory.read_halfword(R[15]);
+	*PC += 2;
 
 	// From ARMv6-M Architecture Reference Manual A5.2
 	switch (opcode >> 10) {

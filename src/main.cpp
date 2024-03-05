@@ -103,6 +103,15 @@ int main (int argc, char *argv[]) {
 							appTui.selectWin(ApplicationTUI::registers);
 							winLoop = false;
 							break;
+						case 'n':
+							{
+								core.step_inst();
+								uint32_t* coreRegs = core.getCoreRegisters();
+								for (int i=0; i<16; i++) {
+									appTui.updateRegisterWin(i, coreRegs[i]);
+								}
+							}
+							break;
 						default:
 							break;
 					}
