@@ -168,7 +168,7 @@ void ApplicationTUI::updateMemoryWinCursorVertical(int lines) {
 		}
 	}
 	// Move Up
-	else if (lines) {
+	else if (lines != 0) {
 		// Only moves cursor
 		if (memWinCurY+lines > 0) {
 			memWinCurY += lines;
@@ -195,7 +195,7 @@ void ApplicationTUI::updateMemoryWinCursorHorizontal(int cols) {
 		if (memWinCurX < memWinWordPerLine*2 -1) {
 			memWinCurX += cols;
 		}
-		else if (memWinCurY+1 < winHeight - 2) {
+		else if (memWinPos < memWinMaxPos or memWinCurY+1 < winHeight-2) {
 			memWinCurX = 0;
 			updateMemoryWinCursorVertical(1);
 		}
@@ -204,7 +204,7 @@ void ApplicationTUI::updateMemoryWinCursorHorizontal(int cols) {
 		if (memWinCurX > 0) {
 			memWinCurX--;
 		}
-		else if (memWinCurY-1 > 0) {
+		else if (memWinPos > 0 or memWinCurY-1 > 0) {
 			memWinCurX = memWinWordPerLine*2 - 1;
 			updateMemoryWinCursorVertical(-1);
 		}
@@ -227,6 +227,7 @@ void ApplicationTUI::updateMemoryWin() {
 }
 
 void ApplicationTUI::setMemWinCurY(string position) {
+	removeMemoryWinCursor();
 	if (position == "viewtop") {
 		memWinCurY = 1;
 	}
@@ -243,6 +244,7 @@ void ApplicationTUI::setMemWinCurY(string position) {
 		memWinCurY = winHeight - 3;
 	}
 	drawMemoryWinCursor();
+	updateStatusWin();
 }
 
 WINDOW* ApplicationTUI::getWin(ApplicationTUI::winId id) {
