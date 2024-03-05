@@ -969,14 +969,16 @@ void CM0P_Core::step_inst() {
 									}
 									break;
 								// None (AL) - Always (Unconditional)
+								// Should never be run as AL only uses T2, undefined behaviour
 								case 0b1110:
 									{
-										condMet = 1;
+										condMet = 0;
+										*PC += (opcode&0x7FF) * 2 - 2048;
+										incrementPC = 0;
 									}
 									break;
 							}
 							if (condMet) {
-								// TODO: Check if imm8 is unsigned or not
 								*PC += imm8 * 2 - 256;	// Keep number between -256 and 254
 								incrementPC = 0;
 							}
@@ -990,8 +992,8 @@ void CM0P_Core::step_inst() {
 		case 0b111000 ... 0b111001:
 			{
 				uint16_t imm11 = opcode & 0x7FF;
-				// TODO: Check if imm8 is unsigned or not
 				*PC += imm11 * 2 - 2048;
+				incrementPC = 0;
 			}
 			break;
 	}
