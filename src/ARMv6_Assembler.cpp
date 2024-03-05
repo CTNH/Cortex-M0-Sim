@@ -21,7 +21,8 @@ ARMv6_Assembler::ARMv6_Assembler(string asmFilePath) {
 
 	PC = INST_BASEADDR;		// Reset PC
 
-	cout << "[ASSEMBLER] First parse of assembly lines for labels." << endl;
+	cout << "[ASSEMBLER] First parse of assembly lines for formatting and labels." << endl;
+	// Only parses assembly line and add labels found; does not increment PC
 	for (int i=0; i<asmLines.size(); i++) {
 		// Remove starting spaces and tabs
 		if (asmLines.at(i).find_first_not_of(" \t") != string::npos)
@@ -35,21 +36,28 @@ ARMv6_Assembler::ARMv6_Assembler(string asmFilePath) {
 		// Add parsed line to list for logging later
 		string line = strReplace(&asmLines.at(i)[0], (char*)"\t", (char*)" ", -1);
 		line += "\0";
+		// If string is empty skip
+		if (line.find_first_not_of(' ') == string::npos) {
+			asmLines.erase(asmLines.begin()+i);
+			i--;
+			continue;
+		}
 		parsedLine.push_back(line);
-
 		// Separate instruction into arguments list by ' ' or ','
 		char** args = strtokSplit(&asmLines.at(i)[0], (char*)" ,\t");
-		// If no elements in array skip
-		if (strArrLen(args) == 0)
-			continue;
-
 		// Add parsed arguments to vector
 		instArgs.push_back(args);
 
-		OpcodeResult result = genOpcode(args, true);
+		if (args[0][strlen(args[0])-1] == ':') {
+			addLabel(args[0]);
+		}
+	}
+	cout << "[ASSEMBLER] Added all labels to list. Beginning second parse to finalize labels." << endl;
+	for (int i=0; i<instArgs.size(); i++) {
+		OpcodeResult result = genOpcode(instArgs.at(i), true);
 	}
 	PC = INST_BASEADDR;		// Reset PC
-	cout << "[ASSEMBLER] Added all labels to list. Beginning second parse." << endl;
+	cout << "[ASSEMBLER] Finalized all labels. Beginning final parse." << endl;
 	for (int i=0; i<instArgs.size(); i++) {
 		OpcodeResult result = genOpcode(instArgs.at(i), false);
 		cout << "  Input Line " << i << setfill(' ') << setw(intLen(instArgs.size())-intLen(i)) << "\t";
@@ -290,8 +298,11 @@ bool ARMv6_Assembler::addLabel(string label) {
 	label.pop_back();
 
 	if (labels.find(label) != labels.end()) {
-		log("Invalid label: label already exists!", 1);
-		return 0;
+		// log("Invalid label: label already exists!", 1);
+		// return 0;
+		log("Replacing existing label " + label, 1);
+		labels.find(label) -> second = PC;
+		return 1;
 	}
 	
 	// Add label to list
@@ -689,7 +700,7 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode(char** args, bool label
 			result = genOpcode_branch(args, 0b1101);
 			break;
 		case 0xd454:		// BAL
-			result = genOpcode_branch(args, 0b1110);
+			result = genOpcode_branch(args, 0b1110, 1);
 			break;
 		case 0x8006:		// BICS
 			result = genOpcode_bitwise(args, 0b1110);

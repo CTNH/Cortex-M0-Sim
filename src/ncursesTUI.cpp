@@ -163,7 +163,7 @@ void ApplicationTUI::updateMemoryWin() {
 		mvwprintw(memoryWin, i+1, 2, "%08x", (memWinPos+i)*4*memWinWordPerLine);
 		// Value in each memory space
 		for (int j=0; j<memWinWordPerLine; j++) {
-			WORD word = coreMem->read_word((memWinPos+i)*8 + j*4);
+			WORD word = coreMem->read_word((memWinPos+i)*4*memWinWordPerLine + j*4);
 			mvwprintw(memoryWin, i+1, j*11 + 14, "%04x %04x", word>>16, word&0xFFFF);
 		}
 	}
