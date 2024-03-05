@@ -25,6 +25,7 @@ ApplicationTUI::ApplicationTUI(CM0P_Memory* memPtr) {
 	createStatusWin();
 	createMemoryWin();
 	createRegisterWin();
+	createFlagsWin();
 
 	selectWin(memory);
 }
@@ -95,12 +96,14 @@ void ApplicationTUI::createMemoryWin() {
 	refreshMemoryWinCursor();
 }
 
-void ApplicationTUI::setCoreMem(CM0P_Memory* coreMem) {
-	this->coreMem = coreMem;
-	// Set max position for memory window
-	memWinMaxPos = (2*memWinWordPerLine);
-	memWinMaxPos = (coreMem->getSize() + memWinMaxPos - 1) / memWinMaxPos;
-	memWinMaxPos = memWinMaxPos - (winHeight-3);
+void ApplicationTUI::createFlagsWin() {
+	flagsWin = newwin(6, 29, winHeight-24, winWidth/2-1);
+	mvwprintw(flagsWin, 1, 2, "N");
+	mvwprintw(flagsWin, 2, 2, "Z");
+	mvwprintw(flagsWin, 3, 2, "C");
+	mvwprintw(flagsWin, 4, 2, "V");
+	wborder(flagsWin, '|', '|', '-', '-', '+', '+', '+', '+');
+	wrefresh(flagsWin);
 }
 
 void ApplicationTUI::refreshMemoryWinCursor() {
@@ -226,5 +229,23 @@ bool ApplicationTUI::confirmExit() {
 	// CLeanup
 	createStatusWin();
 	return false;
+}
+
+void ApplicationTUI::updateFlagsWin(char flag, bool value) {
+	switch (flag) {
+		case 'N':
+			mvwprintw(flagsWin, 1, 5, "%d", value);
+			break;
+		case 'Z':
+			mvwprintw(flagsWin, 2, 5, "%d", value);
+			break;
+		case 'C':
+			mvwprintw(flagsWin, 3, 5, "%d", value);
+			break;
+		case 'V':
+			mvwprintw(flagsWin, 4, 5, "%d", value);
+			break;
+	}
+	wrefresh(flagsWin);
 }
 

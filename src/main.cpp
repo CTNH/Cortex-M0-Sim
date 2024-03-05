@@ -16,6 +16,7 @@ int main (int argc, char *argv[]) {
 	}
 
 	CM0P_Core core(opcodes, assembler.getStartAddr());
+	/*
 	for (auto &it: asmResults) {
 		core.step_inst();
 		// Use padding for 16 and 32 bit instructions
@@ -24,10 +25,12 @@ int main (int argc, char *argv[]) {
 		else
 			printf("%s\t0x%04x\n", it.first.c_str(), it.second.opcode);
 		uint32_t* coreRegs = core.getCoreRegisters();
-		cout << coreRegs[4] << endl;
+		cout << coreRegs[15] << endl;
 		// cout << "Press enter to continue.";
 		// cin.ignore();
 	}
+	return 0;
+	*/
 
 	ApplicationTUI appTui(core.getMemPtr());
 
@@ -110,6 +113,10 @@ int main (int argc, char *argv[]) {
 								for (int i=0; i<16; i++) {
 									appTui.updateRegisterWin(i, coreRegs[i]);
 								}
+								appTui.updateFlagsWin('N', core.get_flag('N'));
+								appTui.updateFlagsWin('Z', core.get_flag('Z'));
+								appTui.updateFlagsWin('C', core.get_flag('C'));
+								appTui.updateFlagsWin('V', core.get_flag('V'));
 							}
 							break;
 						default:
@@ -140,6 +147,8 @@ int main (int argc, char *argv[]) {
 							break;
 					}
 				}
+				break;
+			case ApplicationTUI::flags:
 				break;
 		}
 	}

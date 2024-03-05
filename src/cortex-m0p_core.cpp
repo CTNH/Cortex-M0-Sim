@@ -49,37 +49,49 @@ uint32_t CM0P_Core::update_flag_subtraction(uint32_t a, uint32_t b) {
 bool CM0P_Core:: get_flag(char flag) {
 	switch (flag) {
 		case 'N':
-			break;
+			return (condFlags >> 3) & 1;
 		case 'Z':
-			break;
+			return (condFlags >> 2) & 1;
 		case 'C':
-			break;
+			return (condFlags >> 1) & 1;
 		case 'V':
-			break;
+			return (condFlags >> 0) & 1;
 	}
-	return 1;
+	return 0;
 }
 
 void CM0P_Core::update_flag(char flag, bool bit) {
+	int n=7;
 	switch(flag) {
 		// Negative Flag
 		case 'N':
+			n = 3;
 			break;
 		// Zero Flag
 		case 'Z':
+			n = 2;
 			break;
 		// Carry Flag
 		case 'C':
+			n = 1;
 			break;
 		// Overflow Flag
 		case 'V':
+			n = 0;
 			break;
+	}
+	if (bit) {
+		condFlags |= (uint)1 << n;
+	}
+	else {
+		condFlags &= ~((uint)1 << n);
 	}
 }
 
 void CM0P_Core::step_inst() {
 	uint16_t opcode = memory.read_halfword(R[15]);
-	*PC += 2;
+	// Indicate whether PC should be incremented at the end
+	bool incrementPC = 1;
 
 	// From ARMv6-M Architecture Reference Manual A5.2
 	switch (opcode >> 10) {
@@ -965,7 +977,8 @@ void CM0P_Core::step_inst() {
 							}
 							if (condMet) {
 								// TODO: Check if imm8 is unsigned or not
-								PC += imm8 * 2 - 256;	// Keep number between -256 and 254
+								*PC += imm8 * 2 - 256;	// Keep number between -256 and 254
+								incrementPC = 0;
 							}
 						}
 						break;
@@ -978,10 +991,12 @@ void CM0P_Core::step_inst() {
 			{
 				uint16_t imm11 = opcode & 0x7FF;
 				// TODO: Check if imm8 is unsigned or not
-				PC += imm11 * 2 - 2048;
+				*PC += imm11 * 2 - 2048;
 			}
 			break;
 	}
+	if (incrementPC)
+		*PC += 2;
 }
 
 void CM0P_Core::setPC(uint32_t addr) {

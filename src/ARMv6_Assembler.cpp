@@ -787,7 +787,7 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode(char** args, bool label
 
 					result.opcode = imm;
 					result.opcode |= Rn << 8;
-					result.opcode |= 0b101 >> 11;
+					result.opcode |= 0b101 << 11;
 				}
 				// Register
 				else {
@@ -802,7 +802,7 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode(char** args, bool label
 					if (Rn < 8 and Rm < 8) {
 						result.opcode = Rn;
 						result.opcode |= Rm << 3;
-						result.opcode |= 0b100001010;
+						result.opcode |= 0b100001010 << 6;
 					}
 					else {
 						result.opcode = Rn;
@@ -1347,11 +1347,10 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode(char** args, bool label
 		return result;
 
 
-	// Increment PC by 8 on 32-bits instructions
 	if (result.i32)
-		PC += 8;
-	else
 		PC += 4;
+	else
+		PC += 2;
 
 	return result;
 }
@@ -1486,12 +1485,14 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode_branch(char** args, uin
 	// GT 0b1100
 	// LE 0b1101
 	// AL 0b1110
-	result.opcode |= immOffset >> 2;
 	// Encoding T2
-	if (t2)
+	if (t2) {
+		result.opcode |= (immOffset + 2048) >> 1;
 		result.opcode |= 0b11100 << 11;
+	}
 	// Encoding T1
 	else {
+		result.opcode |= (immOffset + 256) >> 1;
 		result.opcode |= opcodePrefix << 8;
 		result.opcode |= 0b1101 << 12;
 	}

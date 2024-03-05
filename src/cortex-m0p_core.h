@@ -20,6 +20,8 @@ class CM0P_Core {
 		uint32_t*		LR = &R[14];
 		uint32_t*		PC = &R[15];
 
+		uint8_t			condFlags = 0;
+
 		uint32_t		stack[40];
 
 		const uint32_t INST_BASEADDR = 0;	// Set base address of an instruction
