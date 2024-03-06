@@ -82,6 +82,7 @@ class ApplicationTUI {
 
 		void selectWin(winId id);
 
+		void memWinGoto();
 		void memWinGoto(uint32_t address);
 
 		// Cleanup; only called before delete

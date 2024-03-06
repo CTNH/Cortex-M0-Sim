@@ -90,6 +90,8 @@ void CM0P_Core::update_flag(char flag, bool bit) {
 
 void CM0P_Core::step_inst() {
 	uint16_t opcode = memory.read_halfword(R[15]);
+	if (opcode == 0)
+		return;
 	// Indicate whether PC should be incremented at the end
 	bool incrementPC = 1;
 

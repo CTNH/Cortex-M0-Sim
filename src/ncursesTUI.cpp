@@ -164,15 +164,18 @@ string ApplicationTUI::statusWinInputPrompt(string prompt) {
 }
 
 
-void ApplicationTUI::memWinGoto(uint32_t address) {
+void ApplicationTUI::memWinGoto() {
 	string ustr = statusWinInputPrompt("Goto address: ");
-	address = (int)strtol(ustr.c_str(), NULL, 0);
-
+	int address = (int)strtol(ustr.c_str(), NULL, 0);
+	memWinGoto(address);
+}
+void ApplicationTUI::memWinGoto(uint32_t address) {
 	// Do nothing if address is over max of memory
-	if (address == 0 or address > core->getMemPtr()->getSize())
+	if (address > core->getMemPtr()->getSize())
 		return;
 	removeMemoryWinCursor();
 	memWinCurX = (address % (memWinWordPerLine*4)) / 2;
+	// Check if new line is in current scroll view
 	memWinPos = (address / (memWinWordPerLine*4));
 	if (memWinPos > memWinMaxPos)
 		memWinPos = memWinMaxPos;

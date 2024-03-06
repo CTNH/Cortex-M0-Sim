@@ -111,10 +111,11 @@ int main (int argc, char *argv[]) {
 								core.step_inst();
 								appTui.updateRegisterWin();
 								appTui.updateFlagsWin();
+								appTui.memWinGoto(core.getCoreRegisters()[15]);
 							}
 							break;
 						case '/':
-							appTui.memWinGoto(0x3fffae20);
+							appTui.memWinGoto();
 							break;
 						default:
 							break;
