@@ -170,16 +170,35 @@ void ApplicationTUI::memWinGoto() {
 	memWinGoto(address);
 }
 void ApplicationTUI::memWinGoto(uint32_t address) {
-	// Do nothing if address is over max of memory
+	// If address is over max of memory set to max
 	if (address > core->getMemPtr()->getSize())
-		return;
+		address = core -> getMemPtr() -> getSize() - 1;
 	removeMemoryWinCursor();
-	memWinCurX = (address % (memWinWordPerLine*4)) / 2;
+	int newMemWinPos = (address / (memWinWordPerLine*4));
+	bool setBtm=0, scroll=1;
 	// Check if new line is in current scroll view
-	memWinPos = (address / (memWinWordPerLine*4));
-	if (memWinPos > memWinMaxPos)
-		memWinPos = memWinMaxPos;
-	memWinCurY = address / (memWinWordPerLine*4) - memWinPos + 1;
+	if (newMemWinPos - memWinPos > 0) {
+		// new CurY at btm
+		setBtm = 1;
+		// Check if new line is in current scroll view
+		scroll = (newMemWinPos - memWinPos) > (winHeight - 4);
+	}
+	// Scroll window
+	if (scroll) {
+		memWinPos = newMemWinPos;
+		// Scroll up
+		if (setBtm) {
+			// Set position to be on top of scroll view
+			memWinPos -= winHeight-4;
+		}
+		// Scroll down
+		else if (memWinPos > memWinMaxPos) {
+			memWinPos = memWinMaxPos;
+		}
+	}
+
+	memWinCurX = (address % (memWinWordPerLine*4)) / 2;
+	memWinCurY = newMemWinPos - memWinPos + 1;
 
 	updateMemoryWin();
 	drawMemoryWinCursor();
