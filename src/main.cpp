@@ -1,4 +1,5 @@
 #include <iostream>
+#include <ncurses.h>
 #include "cortex-m0p_core.h"
 #include "ARMv6_Assembler.h"
 #include "ncursesTUI.h"
@@ -117,6 +118,9 @@ int main (int argc, char *argv[]) {
 						case '/':
 							appTui.memWinGoto();
 							break;
+						case '*':
+							appTui.memWinGoto(core.getCoreRegisters()[15]);
+							break;
 						default:
 							break;
 					}
@@ -136,8 +140,16 @@ int main (int argc, char *argv[]) {
 								winLoop = false;
 							}
 							break;
+						case KEY_DOWN:
+						case 'j':
+							appTui.updateRegisterWinCursorVertical(1);
+							break;
+						case KEY_UP:
+						case 'k':
+							appTui.updateRegisterWinCursorVertical(-1);
+							break;
 						case 'c':
-							appTui.regWinChPC();
+							appTui.regWinChangeReg();
 							break;
 						case '\t':
 							currWin = ApplicationTUI::memory;

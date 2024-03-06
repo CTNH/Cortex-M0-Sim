@@ -1008,11 +1008,7 @@ void CM0P_Core::setPC(uint32_t addr) {
 }
 
 uint32_t* CM0P_Core::getCoreRegisters() {
-	uint32_t* out = (uint32_t*)malloc(sizeof(uint32_t) * 16);
-	for (int i=0; i<16; i++) {
-		out[i] = R[i];
-	}
-	return out;
+	return R;
 }
 
 CM0P_Memory* CM0P_Core::getMemPtr() {

@@ -44,7 +44,27 @@ void ApplicationTUI::updateRegisterWin() {
 	for (int i=0; i<16; i++) {
 		mvwprintw(registerWin, i+1, 17, "0x%08x", coreRegs[i]);
 	}
-	wrefresh(registerWin);
+	updateRegisterWinCursorVertical(0);
+}
+
+void ApplicationTUI::regWinChangeReg() {
+	string ustr = "0x" + statusWinInputPrompt("New Register Value: 0x", 1);
+	int regVal = (int)strtol(ustr.c_str(), NULL, 0);
+	if (regWinCur == 16) { 		// PC
+		// If address is over max of memory set to max
+		if (regVal > core->getMemPtr()->getSize() or regVal%2) {
+			createStatusWin("Invalid PC value! Must be within memory and is a multiple of 2.");
+			wgetch(registerWin);
+			createStatusWin(getWinStat(selectedWin));
+			return;
+		}
+		core -> setPC(regVal);
+		memWinGoto(regVal);
+	}
+	else {
+		core->getCoreRegisters()[regWinCur-1] = regVal;
+	}
+	updateRegisterWin();
 }
 
 void ApplicationTUI::createStatusWin(string msg) {
@@ -69,6 +89,7 @@ void ApplicationTUI::updateStatusWin() {
 void ApplicationTUI::createRegisterWin() {
 	// Create window
 	registerWin = newwin(18, 29, winHeight-19, winWidth/2-1);
+	keypad(registerWin, TRUE);
 
 	wattron(registerWin, A_BOLD);
 	wattron(registerWin, A_UNDERLINE);
@@ -165,21 +186,6 @@ string ApplicationTUI::statusWinInputPrompt(string prompt, bool numOnly) {
 
 	createStatusWin(getWinStat(selectedWin));
 	return out;
-}
-
-void ApplicationTUI::regWinChPC() {
-	string ustr = "0x" + statusWinInputPrompt("New PC: 0x", 1);
-	int address = (int)strtol(ustr.c_str(), NULL, 0);
-	// If address is over max of memory set to max
-	if (address > core->getMemPtr()->getSize() or address%2) {
-		createStatusWin("Invalid PC value! Must be within memory and is a multiple of 2.");
-		wgetch(registerWin);
-		createStatusWin(getWinStat(selectedWin));
-		return;
-	}
-	core -> setPC(address);
-	memWinGoto(address);
-	updateRegisterWin();
 }
 
 void ApplicationTUI::memWinGoto() {
@@ -406,6 +412,8 @@ WINDOW* ApplicationTUI::getWin(ApplicationTUI::winId id) {
 			return flagsWin;
 		case labels:
 			return labelsWin;
+		default:
+			return nullptr; 
 	}
 }
 
@@ -416,7 +424,7 @@ string ApplicationTUI::getWinStat(winId id) {
 		case help:
 			return "";
 		case registers:
-			return " c: change PC";
+			return " q: quit | j:down | k:up | c: change register value";
 		case opcode:
 			return "";
 		case status:
@@ -424,6 +432,8 @@ string ApplicationTUI::getWinStat(winId id) {
 		case flags:
 			return "";
 		case labels:
+			return "";
+		default:
 			return "";
 	}
 }
@@ -463,5 +473,33 @@ void ApplicationTUI::updateFlagsWin() {
 	mvwprintw(flagsWin, 4, 5, "%d", core -> get_flag('V'));
 
 	wrefresh(flagsWin);
+}
+
+void ApplicationTUI::updateRegisterWinCursorVertical(int lines) {
+	mvwprintw(registerWin, regWinCur, 17, "0x%08x", core->getCoreRegisters()[regWinCur-1]);
+
+	if (lines != 0) {
+		if (lines > 0) {
+			if (regWinCur+lines < 17) {
+				regWinCur += lines;
+			}
+			else {
+				regWinCur = 16;
+			}
+		}
+		else {
+			if (regWinCur+lines < 1) {
+				regWinCur = 1;
+			}
+			else {
+				regWinCur += lines;
+			}
+		}
+	}
+
+	wattron(registerWin, A_BOLD);
+	mvwprintw(registerWin, regWinCur, 17, "0x%08x", core->getCoreRegisters()[regWinCur-1]);
+	wattroff(registerWin, A_BOLD);
+	wrefresh(registerWin);
 }
 

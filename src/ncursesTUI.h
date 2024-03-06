@@ -35,7 +35,7 @@ class ApplicationTUI {
 		int memWinPos = 0;
 		int memWinMaxPos = 0;	// Calculated in createMemoryWin
 		int memWinCurX = 0, memWinCurY = 1;
-		int regWinPos = 15;
+		int regWinCur = 16;
 
 		WINDOW *helpWin;		// Help menu
 		WINDOW *memoryWin;
@@ -91,7 +91,7 @@ class ApplicationTUI {
 		// Update selected window and highlight
 		void selectWin(winId id);
 		// Change PC with user input
-		void regWinChPC();
+		void regWinChangeReg();
 
 		// Cleanup; only called before delete
 		void clean();
