@@ -16,7 +16,8 @@ class ApplicationTUI {
 			opcode,
 			status,
 			registers,
-			flags
+			flags,
+			labels
 		};
 
 	private:
@@ -34,6 +35,7 @@ class ApplicationTUI {
 		int memWinPos = 0;
 		int memWinMaxPos = 0;	// Calculated in createMemoryWin
 		int memWinCurX = 0, memWinCurY = 1;
+		int regWinPos = 15;
 
 		WINDOW *helpWin;		// Help menu
 		WINDOW *memoryWin;
@@ -47,7 +49,7 @@ class ApplicationTUI {
 		string *leftWinTxt, *rightWinText;
 
 		void resizeWin(int foo);
-		void createStatusWin();
+		void createStatusWin(string msg);
 		void createRegisterWin();
 		void createMemoryWin();
 		void createFlagsWin();
@@ -56,8 +58,13 @@ class ApplicationTUI {
 
 		winId selectedWin;
 		WINDOW* getWin(winId id);
+		// Get status bar message for given window
+		string getWinStat(winId id);
 
-		string statusWinInputPrompt(string prompt);
+		string statusWinInputPrompt(string prompt, bool numOnly);
+
+		void removeMemoryWinCursor();
+		void drawMemoryWinCursor();
 
 	public:
 		// Constructor
@@ -67,23 +74,24 @@ class ApplicationTUI {
 		void updateMemoryWin();
 		void updateFlagsWin();
 
-		// Redraw cursor on screen
-		void removeMemoryWinCursor();
-		void drawMemoryWinCursor();
-		// Move the cursor up or down
+		// Update cursor of memory window
 		void updateMemoryWinCursorVertical(int lines);
 		void updateMemoryWinCursorHorizontal(int cols);
+		// Move cursor of memory window to presets
+		void setPresetMemWinCur(int moveid);
+		// Set cursor to address or from prompt
+		void memWinGoto();
+		void memWinGoto(uint32_t address);
+
+		// Update cursor of register window
+		void updateRegisterWinCursorVertical(int lines);
 
 		// Get key press given window
 		int getWinCh(winId id);
-
-		// Move cursor position
-		void setMemWinCurY(string position);
-
+		// Update selected window and highlight
 		void selectWin(winId id);
-
-		void memWinGoto();
-		void memWinGoto(uint32_t address);
+		// Change PC with user input
+		void regWinChPC();
 
 		// Cleanup; only called before delete
 		void clean();

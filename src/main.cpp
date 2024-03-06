@@ -79,11 +79,11 @@ int main (int argc, char *argv[]) {
 							break;
 						// MemWin_btm
 						case 'L':
-							appTui.setMemWinCurY("viewbtm");
+							appTui.setPresetMemWinCur(1);
 							break;
 						// MemWin_top
 						case 'H':
-							appTui.setMemWinCurY("viewtop");
+							appTui.setPresetMemWinCur(0);
 							break;
 						// MemWin_PgDn
 						case KEY_NPAGE:
@@ -96,10 +96,10 @@ int main (int argc, char *argv[]) {
 							appTui.updateMemoryWinCursorVertical(-20);
 							break;
 						case 'g':
-							appTui.setMemWinCurY("top");
+							appTui.setPresetMemWinCur(2);
 							break;
 						case 'G':
-							appTui.setMemWinCurY("btm");
+							appTui.setPresetMemWinCur(3);
 							break;
 						case '\t':
 							currWin = ApplicationTUI::registers;
@@ -136,6 +136,9 @@ int main (int argc, char *argv[]) {
 								winLoop = false;
 							}
 							break;
+						case 'c':
+							appTui.regWinChPC();
+							break;
 						case '\t':
 							currWin = ApplicationTUI::memory;
 							appTui.selectWin(ApplicationTUI::memory);
@@ -147,6 +150,8 @@ int main (int argc, char *argv[]) {
 				}
 				break;
 			case ApplicationTUI::flags:
+				break;
+			case ApplicationTUI::labels:
 				break;
 		}
 	}

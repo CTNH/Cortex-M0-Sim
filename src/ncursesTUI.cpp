@@ -23,11 +23,10 @@ ApplicationTUI::ApplicationTUI(CM0P_Core* core, unordered_map<string, uint32_t> 
 		// signal(SIGWINCH, resizeWin);
 	}
 
-	createStatusWin();
 	createMemoryWin();
-	createRegisterWin();
-	createFlagsWin();
 	createLabelsWin(labels);
+	createFlagsWin();
+	createRegisterWin();
 
 	selectWin(memory);
 }
@@ -48,16 +47,16 @@ void ApplicationTUI::updateRegisterWin() {
 	wrefresh(registerWin);
 }
 
-void ApplicationTUI::createStatusWin() {
+void ApplicationTUI::createStatusWin(string msg) {
 	statusWin = newwin(1, winWidth, winHeight-1, 0);
 	keypad(statusWin, TRUE);
-	string separator = "  |  ";
-	string msg = " q: quit";
-	// u8"\u25c0\u25bc\u25b2\u25b6" + 
-	msg += separator + "h,j,k,l/arrow keys: navigate";
-	msg += separator + "n: next instruction";
-	msg += separator + "p: previous instruction";
-	msg += separator + "/: goto address";
+	// string separator = "  |  ";
+	// string msg = " q: quit";
+	// // u8"\u25c0\u25bc\u25b2\u25b6" + 
+	// msg += separator + "h,j,k,l/arrow keys: navigate";
+	// msg += separator + "n: next instruction";
+	// msg += separator + "p: previous instruction";
+	// msg += separator + "/: goto address";
 	// mvwprintw(statusWin, 0, 0, "q: quit");
 	mvwprintw(statusWin, 0, 0, "%s", msg.c_str());
 	wrefresh(statusWin);
@@ -90,7 +89,7 @@ void ApplicationTUI::createRegisterWin() {
 	// Put on screen
 	wrefresh(registerWin);
 }
-string ApplicationTUI::statusWinInputPrompt(string prompt) {
+string ApplicationTUI::statusWinInputPrompt(string prompt, bool numOnly) {
 	wclear(statusWin);
 
 	mvwprintw(statusWin, 0, 1, "%s", prompt.c_str());
@@ -137,7 +136,7 @@ string ApplicationTUI::statusWinInputPrompt(string prompt) {
 				i = out.size();
 				break;
 			case 27:	// ESC
-				createStatusWin();
+				createStatusWin(getWinStat(selectedWin));
 				return " ";
 			// Clear line
 			case 21:	// ^U
@@ -146,7 +145,12 @@ string ApplicationTUI::statusWinInputPrompt(string prompt) {
 				mvwprintw(statusWin, 0, prompt.size()+1, "%s  ", out.c_str()); 
 				i=0;
 				break;
-			case '!' ... '~':
+			case ' ':
+			case '!' ... '/':
+			case ':' ... '~':
+				if (numOnly)
+					break;
+			case '0' ... '9':
 				out.insert(i, 1, c);
 				mvwprintw(statusWin, 0, prompt.size()+1, "%s  ", out.c_str()); 
 				i++;
@@ -159,13 +163,27 @@ string ApplicationTUI::statusWinInputPrompt(string prompt) {
 	}
 	out.push_back('\0');
 
-	createStatusWin();
+	createStatusWin(getWinStat(selectedWin));
 	return out;
 }
 
+void ApplicationTUI::regWinChPC() {
+	string ustr = "0x" + statusWinInputPrompt("New PC: 0x", 1);
+	int address = (int)strtol(ustr.c_str(), NULL, 0);
+	// If address is over max of memory set to max
+	if (address > core->getMemPtr()->getSize() or address%2) {
+		createStatusWin("Invalid PC value! Must be within memory and is a multiple of 2.");
+		wgetch(registerWin);
+		createStatusWin(getWinStat(selectedWin));
+		return;
+	}
+	core -> setPC(address);
+	memWinGoto(address);
+	updateRegisterWin();
+}
 
 void ApplicationTUI::memWinGoto() {
-	string ustr = statusWinInputPrompt("Goto address: ");
+	string ustr = "0x" + statusWinInputPrompt("Goto address : 0x", 1);
 	int address = (int)strtol(ustr.c_str(), NULL, 0);
 	memWinGoto(address);
 }
@@ -343,22 +361,30 @@ void ApplicationTUI::updateMemoryWin() {
 	}
 }
 
-void ApplicationTUI::setMemWinCurY(string position) {
+void ApplicationTUI::setPresetMemWinCur(int moveid) {
 	removeMemoryWinCursor();
-	if (position == "viewtop") {
-		memWinCurY = 1;
-	}
-	else if (position == "viewbtm")
-		memWinCurY = winHeight - 3;
-	else if (position == "top") {
-		memWinPos = 0;
-		updateMemoryWin();
-		memWinCurY = 1;
-	}
-	else if (position == "btm") {
-		memWinPos = memWinMaxPos;
-		updateMemoryWin();
-		memWinCurY = winHeight - 3;
+	switch (moveid) {
+		// View top
+		case 0:
+			memWinCurY = 1;
+			break;
+		// View bottom
+		case 1:
+			memWinCurY = winHeight - 3;
+			break;
+		// First memory row
+		case 2:
+			memWinPos = 0;
+			updateMemoryWin();
+			memWinCurY = 1;
+			break;
+		// Last memory row
+		case 3:
+			memWinPos = memWinMaxPos;
+			updateMemoryWin();
+			memWinCurY = winHeight - 3;
+		default:
+			break;
 	}
 	drawMemoryWinCursor();
 	updateStatusWin();
@@ -376,10 +402,32 @@ WINDOW* ApplicationTUI::getWin(ApplicationTUI::winId id) {
 			return opcodeWin;
 		case status:
 			return statusWin;
-		default:
-			return (WINDOW*)NULL;
+		case flags:
+			return flagsWin;
+		case labels:
+			return labelsWin;
 	}
 }
+
+string ApplicationTUI::getWinStat(winId id) {
+	switch(id) {
+		case memory:
+			return " q: quit | h,j,k,l/arrow keys: navigate | n: next instruction | /: goto address | *: goto PC";
+		case help:
+			return "";
+		case registers:
+			return " c: change PC";
+		case opcode:
+			return "";
+		case status:
+			return "";
+		case flags:
+			return "";
+		case labels:
+			return "";
+	}
+}
+
 void ApplicationTUI::selectWin(ApplicationTUI::winId id) {
 	if (id != selectedWin) {
 		// 'Unselect' previous selected window
@@ -394,6 +442,7 @@ void ApplicationTUI::selectWin(ApplicationTUI::winId id) {
 		wrefresh(getWin(id));
 
 		selectedWin = id;
+		createStatusWin(getWinStat(selectedWin));
 	}
 }
 
@@ -403,7 +452,7 @@ bool ApplicationTUI::confirmExit() {
 	if (getWinCh(status) == 'y')
 		return true;
 	// CLeanup
-	createStatusWin();
+	createStatusWin(getWinStat(selectedWin));
 	return false;
 }
 
