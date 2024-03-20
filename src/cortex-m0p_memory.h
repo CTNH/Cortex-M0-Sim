@@ -18,16 +18,16 @@ class CM0P_Memory {
 		// Check the endianness bit in the AIRCR register and update the endianness variable
 		void check_endian();
 		// Check address validity; Called by all read and write functions
-		bool valid_address(uint64_t address);
+		bool valid_address(uint32_t address);
 	public:
 		// Read data inside memory
-		BYTE		read_byte(uint64_t address);
-		HALFWORD	read_halfword(uint64_t address);
-		WORD		read_word(uint64_t address);
+		BYTE		read_byte(uint32_t address);
+		HALFWORD	read_halfword(uint32_t address);
+		WORD		read_word(uint32_t address);
 		// Write data to memory
-		void		write_byte(uint64_t address, BYTE data);
-		void		write_halfword(uint64_t address, HALFWORD data);
-		void		write_word(uint64_t address, WORD data);
+		void		write_byte(uint32_t address, BYTE data);
+		void		write_halfword(uint32_t address, HALFWORD data);
+		void		write_word(uint32_t address, WORD data);
 		// Constructor
 		CM0P_Memory();
 		// Deconstructor

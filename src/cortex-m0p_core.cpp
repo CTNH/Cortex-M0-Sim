@@ -21,6 +21,10 @@ CM0P_Core::CM0P_Core(vector<ARMv6_Assembler::OpcodeResult> opcodes, uint32_t sta
 	setPC(startAddr);
 }
 
+uint32_t CM0P_Core::getBaseAddr() {
+	return INST_BASEADDR;
+}
+
 uint32_t CM0P_Core::update_flag_addition(uint32_t a, uint32_t b) {
 	uint32_t result = a + b;
 	update_flag('N', result >> 31);	// Value of MSb

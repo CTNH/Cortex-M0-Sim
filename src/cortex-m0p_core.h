@@ -34,6 +34,7 @@ class CM0P_Core {
 		void stackPush(uint32_t data);
 	public:
 		CM0P_Core(vector<ARMv6_Assembler::OpcodeResult>, uint32_t startAddr);	// Constructor
+		uint32_t getBaseAddr();
 		bool get_flag(char flag);
 		void update_flag(char flag, bool bit);
 		void step_inst();		// Run instruction in memory
