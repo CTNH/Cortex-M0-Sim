@@ -110,7 +110,8 @@ void CM0P_Core::step_inst() {
 						uint8_t Rm = (opcode >> 3) & 0b111;
 						uint8_t Rd = opcode & 0b111;
 						R[Rd] = R[Rm] << imm5;
-						update_flag('C', 0);	// TODO
+						if (imm5 != 0)
+							update_flag('C', (R[Rm] >> (32-imm5)) & 1);
 						update_flag('N', R[Rd] >> 31);	// Value of MSb
 						update_flag('Z', R[Rd] == 0);
 					}
@@ -123,7 +124,8 @@ void CM0P_Core::step_inst() {
 						uint8_t Rm = (opcode >> 3) & 0b111;
 						uint8_t Rd = opcode & 0b111;
 						R[Rd] = R[Rm] >> imm5;
-						update_flag('C', 0);	// TODO
+						if (imm5 != 0)
+							update_flag('C', (R[Rm] >> (imm5-1)) & 1);
 						update_flag('N', R[Rd] >> 31);	// Value of MSb
 						update_flag('Z', R[Rd] == 0);
 					}
@@ -139,7 +141,8 @@ void CM0P_Core::step_inst() {
 						R[Rd] = R[Rm] >> imm5;
 						if (msb)
 							R[Rd] |= ((1<<imm5) - 1) << (32-imm5);
-						update_flag('C', 0);	// TODO
+						if (imm5 != 0)
+							update_flag('C', (R[Rm] >> (imm5-1)) & 1);
 						update_flag('N', R[Rd] >> 31);	// Value of MSb
 						update_flag('Z', R[Rd] == 0);
 					}
@@ -306,7 +309,6 @@ void CM0P_Core::step_inst() {
 					break;
 
 				// ASRS Arithmetic Shift Right Register
-				// TODO: Check correct
 				case 0b0100:
 					{
 						uint8_t Rm = (opcode >> 3) & 0b111;
@@ -354,11 +356,16 @@ void CM0P_Core::step_inst() {
 					break;
 
 				// RORS Rotate Right Register
-				// TODO
 				case 0b0111:
 					{
 						uint8_t Rm = (opcode >> 3) & 0b111;
 						uint8_t Rdn = opcode & 0b111;
+						int shift_n = R[Rm] & 0xFF;		// Shift amount in bottom byte
+						R[Rdn] = (R[Rdn] >> shift_n) | ((R[Rdn]) << (32-shift_n));
+						if (shift_n != 0)
+							update_flag('C', (R[Rm] >> (shift_n-1)) & 1);
+						update_flag('N', R[Rdn] >> 31);	// Value of MSb
+						update_flag('Z', R[Rdn] == 0);
 					}
 					break;
 
@@ -471,11 +478,18 @@ void CM0P_Core::step_inst() {
 					break;
 
 				// MOV Move Registers
-				// TODO
 				case 0b10:
 					{
-						uint8_t Rm = (opcode >> 3) & 0xF;
+						uint8_t Rm = ((opcode >> 3) & 0xF) | ((opcode >> 4) & 0b1000);
 						uint8_t Rd = opcode & 0b111;
+
+						if (Rm == 15) {
+							// Discard last bit
+							*PC = R[Rm] & ~((uint)1 << 1);
+						}
+						else {
+							R[Rd] = R[Rm];
+						}
 					}
 					break;
 
@@ -486,15 +500,17 @@ void CM0P_Core::step_inst() {
 						uint8_t Rm = (opcode >> 3) & 0xF;
 						// If bit[0] of Rm is 0
 						if (~(R[Rm] & 1)) {
-							// TODO: Hardfault exception
+							// Hardfault exception
 						}
+						*LR = *PC - 2;
+						*PC = R[Rm];
 					}
 					// BX Branch and Exchange
 					else {
 						uint8_t Rm = (opcode >> 3) & 0xF;
 						// If bit[0] of Rm is 0
 						if (~(R[Rm] & 1)) {
-							// TODO: Hardfault exception
+							// Hardfault exception
 						}
 					}
 					break;
@@ -746,14 +762,7 @@ void CM0P_Core::step_inst() {
 				// PUSH - Push Multiple Registers
 				case 0b010000 ... 0b010111:
 					{
-						uint8_t register_list = opcode & 0xFF;
-						for (int i=0; i<8; i++) {
-							// Check if bit is set
-							if (register_list >> i & 1) {
-								// stackPush(R[i+1]);
-								// TODO
-							}
-						}
+						// Unsupported
 					}
 					break;
 				// CPS - Change Processor State
@@ -797,11 +806,7 @@ void CM0P_Core::step_inst() {
 				// POP - Pop Multiple Registers
 				case 0b110000 ... 0b110111:
 					{
-						if (opcode & 1) {
-							// TODO Hardfault exception
-						}
-						uint8_t register_list = opcode & 0xFF;
-						uint8_t P = (opcode >> 8) & 1;
+						// Unsupported
 					}
 					break;
 				// BKPT - Breakpoint
@@ -860,14 +865,13 @@ void CM0P_Core::step_inst() {
 					// UDF - Permanently Undefined
 					case 1110:
 						{
-							// TODO
+							// Unsupported
 						}
 						break;
 					// SVC - Supervisor Call
 					case 1111:
 						{
-							uint8_t imm8 = opcode & 0xFF;
-							// TODO
+							// Unsupported
 						}
 						break;
 					// B - Conditional Branch - A6.7.10

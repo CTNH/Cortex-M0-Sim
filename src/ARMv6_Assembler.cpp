@@ -968,6 +968,11 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode(char** args, bool label
 					result.invalid = 1;
 					break;
 				}
+				if (Rd > 7 and Rd != 15) {
+					log("Invalid register: Rd must be between R0 and R7 or PC!", 1);
+					result.invalid = 1;
+					break;
+				}
 
 				result.opcode = Rd;
 				result.opcode |= Rm << 3;
@@ -1097,9 +1102,11 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode(char** args, bool label
 			break;
 		case 0x11b4:		// POP
 			result = genOpcode_popPush(args, 1, (char*)"PC");
+			result.unsupported = 1;
 			break;
 		case 0x6265:		// PUSH
 			result = genOpcode_popPush(args, 0, (char*)"LR");
+			result.unsupported = 1;
 			break;
 		case 0x18f2:		// REV
 			result = genOpcode_reverseBytes(args, 0b00);
@@ -1296,6 +1303,8 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode(char** args, bool label
 
 				result.opcode = imm;
 				result.opcode |= 0b11011111 << 8;
+
+				result.unsupported = 1;
 			}
 			break;
 		case 0x1466:		// SXTB
@@ -1330,6 +1339,8 @@ ARMv6_Assembler::OpcodeResult ARMv6_Assembler::genOpcode(char** args, bool label
 
 				result.opcode = imm;
 				result.opcode |= 0b11011110 << 8;
+
+				result.unsupported = 1;
 			}
 			break;
 		case 0x2d28:		// UXTB
