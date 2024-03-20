@@ -17,7 +17,8 @@ class ApplicationTUI {
 			status,
 			registers,
 			flags,
-			labels
+			labels,
+			assembly
 		};
 
 	private:
@@ -44,9 +45,12 @@ class ApplicationTUI {
 		WINDOW *registerWin;	// Register values
 		WINDOW *flagsWin;
 		WINDOW *labelsWin;
+		WINDOW *asmWin;
 
 		// Array of text in each left and right window
 		string *leftWinTxt, *rightWinText;
+
+		vector<string> asmSrc;
 
 		void resizeWin(int foo);
 		void createStatusWin(string msg);
@@ -54,6 +58,7 @@ class ApplicationTUI {
 		void createMemoryWin();
 		void createFlagsWin();
 		void createLabelsWin(unordered_map<string, uint32_t> labels);
+		void createASMWin(vector<pair<string, ARMv6_Assembler::OpcodeResult>> asmResults);
 		void updateStatusWin();
 
 		winId selectedWin;
@@ -61,14 +66,15 @@ class ApplicationTUI {
 		// Get status bar message for given window
 		string getWinStat(winId id);
 
-		string statusWinInputPrompt(string prompt, bool numOnly);
+		// Input type: 0 for all, 1 for hex only, 2 for num only
+		string statusWinInputPrompt(string prompt, int inType);
 
 		void removeMemoryWinCursor();
 		void drawMemoryWinCursor();
 
 	public:
 		// Constructor
-		ApplicationTUI(CM0P_Core* core, unordered_map<string, uint32_t> labels);
+		ApplicationTUI(CM0P_Core* core, unordered_map<string, uint32_t> labels, vector<pair<string, ARMv6_Assembler::OpcodeResult>> asmResults);
 
 		void updateRegisterWin();
 		void updateMemoryWin();

@@ -37,7 +37,7 @@ int main (int argc, char *argv[]) {
 	return 0;
 	*/
 
-	ApplicationTUI appTui(&core, assembler.getLabels());
+	ApplicationTUI appTui(&core, assembler.getLabels(), asmResults);
 
 	ApplicationTUI::winId currWin = appTui.memory;
 	appTui.selectWin(currWin);
@@ -46,8 +46,6 @@ int main (int argc, char *argv[]) {
 	
 	while(loop) {
 		switch(currWin) {
-			case ApplicationTUI::help:
-				break;
 			case ApplicationTUI::memory:
 				winLoop = true;
 				while(winLoop) {
@@ -126,10 +124,6 @@ int main (int argc, char *argv[]) {
 					}
 				}
 				break;
-			case ApplicationTUI::opcode:
-				break;
-			case ApplicationTUI::status:
-				break;
 			case ApplicationTUI::registers:
 				winLoop = true;
 				while (winLoop) {
@@ -152,8 +146,8 @@ int main (int argc, char *argv[]) {
 							appTui.regWinChangeReg();
 							break;
 						case '\t':
-							currWin = ApplicationTUI::memory;
-							appTui.selectWin(ApplicationTUI::memory);
+							currWin = ApplicationTUI::assembly;
+							appTui.selectWin(ApplicationTUI::assembly);
 							winLoop = false;
 							break;
 						default:
@@ -161,9 +155,23 @@ int main (int argc, char *argv[]) {
 					}
 				}
 				break;
-			case ApplicationTUI::flags:
+			case ApplicationTUI::assembly:
+				winLoop = true;
+				while (winLoop) {
+					switch(appTui.getWinCh(currWin)) {
+						case '\t':
+							currWin = ApplicationTUI::memory;
+							appTui.selectWin(ApplicationTUI::memory);
+							winLoop = false;
+							break;
+					}
+				}
 				break;
+			case ApplicationTUI::opcode:
+			case ApplicationTUI::status:
+			case ApplicationTUI::help:
 			case ApplicationTUI::labels:
+			case ApplicationTUI::flags:
 				break;
 		}
 	}

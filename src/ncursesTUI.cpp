@@ -5,8 +5,13 @@
 
 // void ApplicationTUI::resizeWin(int foo) {}
 
-ApplicationTUI::ApplicationTUI(CM0P_Core* core, unordered_map<string, uint32_t> labels) {
+ApplicationTUI::ApplicationTUI(
+		CM0P_Core* core,
+		unordered_map<string, uint32_t> labels,
+		vector<pair<string, ARMv6_Assembler::OpcodeResult>> asmResults
+	) {
 	this -> core = core;
+
 	initscr();
 	cbreak();
 	noecho();
@@ -27,6 +32,7 @@ ApplicationTUI::ApplicationTUI(CM0P_Core* core, unordered_map<string, uint32_t> 
 	createLabelsWin(labels);
 	createFlagsWin();
 	createRegisterWin();
+	createASMWin(asmResults);
 
 	selectWin(memory);
 }
@@ -110,7 +116,7 @@ void ApplicationTUI::createRegisterWin() {
 	// Put on screen
 	wrefresh(registerWin);
 }
-string ApplicationTUI::statusWinInputPrompt(string prompt, bool numOnly) {
+string ApplicationTUI::statusWinInputPrompt(string prompt, int inType=0) {
 	wclear(statusWin);
 
 	mvwprintw(statusWin, 0, 1, "%s", prompt.c_str());
@@ -168,8 +174,14 @@ string ApplicationTUI::statusWinInputPrompt(string prompt, bool numOnly) {
 				break;
 			case ' ':
 			case '!' ... '/':
-			case ':' ... '~':
-				if (numOnly)
+			case ':' ... '@':
+			case 'G' ... '`':
+			case 'g' ... '~':
+				if (inType > 0)
+					break;
+			case 'A' ... 'F':
+			case 'a' ... 'f':
+				if (inType > 1)
 					break;
 			case '0' ... '9':
 				out.insert(i, 1, c);
@@ -177,6 +189,7 @@ string ApplicationTUI::statusWinInputPrompt(string prompt, bool numOnly) {
 				i++;
 				break;
 			default:
+				// mvwprintw(statusWin, 0, prompt.size()+1, "%d", c); 
 				break;
 		}
 		mvwprintw(statusWin, 0, i+prompt.size() + 1, "");
@@ -269,6 +282,22 @@ void ApplicationTUI::createLabelsWin(unordered_map<string, uint32_t> labels) {
 	}
 	wborder(labelsWin, '|', '|', '-', '-', '+', '+', '+', '+');
 	wrefresh(labelsWin);
+}
+
+void ApplicationTUI::createASMWin(vector<pair<string, ARMv6_Assembler::OpcodeResult>> asmResults) {
+	asmWin = newwin(winHeight-1, winWidth/2-28, 0, winWidth/2+27);
+	int maxLine = winHeight - 0;
+	if (maxLine > asmResults.size())
+		maxLine = asmResults.size();
+	int addr = core->getBaseAddr();
+	for (int i=0; i<maxLine; i++) {
+		ARMv6_Assembler::OpcodeResult ores = asmResults.at(i).second;
+		// mvwprintw(asmWin, i, 2, "%08x %s", addr, asmResults.at(i-1).first.c_str());
+		mvwprintw(asmWin, i+1, 2, "%08x %08x %s", addr, ores.opcode, asmResults.at(i).first.c_str());
+		addr += (ores.i32+1) * 2;
+	}
+	wborder(asmWin, '|', '|', '-', '-', '+', '+', '+', '+');
+	wrefresh(asmWin);
 }
 
 void ApplicationTUI::removeMemoryWinCursor() {
@@ -412,6 +441,8 @@ WINDOW* ApplicationTUI::getWin(ApplicationTUI::winId id) {
 			return flagsWin;
 		case labels:
 			return labelsWin;
+		case assembly:
+			return asmWin;
 		default:
 			return nullptr; 
 	}
@@ -421,18 +452,14 @@ string ApplicationTUI::getWinStat(winId id) {
 	switch(id) {
 		case memory:
 			return " q: quit | h,j,k,l/arrow keys: navigate | n: next instruction | /: goto address | *: goto PC";
-		case help:
-			return "";
 		case registers:
 			return " q: quit | j:down | k:up | c: change register value";
+		case help:
 		case opcode:
-			return "";
 		case status:
-			return "";
 		case flags:
-			return "";
 		case labels:
-			return "";
+		case assembly:
 		default:
 			return "";
 	}
