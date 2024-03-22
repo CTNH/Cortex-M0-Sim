@@ -26,7 +26,7 @@ class ApplicationTUI {
 		const int minWidth = 40;
 		const int minHeight = 18;
 
-		const int memWinWordPerLine = 6;
+		int memWinWordPerLine;
 
 		CM0P_Core* core;
 

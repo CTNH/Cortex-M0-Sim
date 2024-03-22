@@ -28,6 +28,8 @@ ApplicationTUI::ApplicationTUI(
 		// signal(SIGWINCH, resizeWin);
 	}
 
+	memWinWordPerLine = (winWidth/2 - 14) / 11;
+
 	createMemoryWin();
 	createLabelsWin(labels);
 	createFlagsWin();
@@ -451,7 +453,7 @@ WINDOW* ApplicationTUI::getWin(ApplicationTUI::winId id) {
 string ApplicationTUI::getWinStat(winId id) {
 	switch(id) {
 		case memory:
-			return " q: quit | h,j,k,l/arrow keys: navigate | n: next instruction | /: goto address | *: goto PC";
+			return " q: quit | n: next instruction | h,j,k,l/arrow keys: navigate | H: View top | L: View bottom | /: goto address | *: goto PC";
 		case registers:
 			return " q: quit | j:down | k:up | c: change register value";
 		case help:
